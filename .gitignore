@@ -1,9 +1,6 @@
 .venv/
-.idea/
+wheelhouse/
+*.tar.gz
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-*.zip
-*.db
-.DS_Store
+.ipynb_checkpoints/
