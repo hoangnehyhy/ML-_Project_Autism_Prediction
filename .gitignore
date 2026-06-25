@@ -5,5 +5,3 @@ __pycache__/
 *.pyc
 .ipynb_checkpoints/
 .idea/
-data/processed/train_combined.csv
-data/Test/
