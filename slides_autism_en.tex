@@ -415,15 +415,15 @@ Logistic Regression & 0.8643 & 0.8688 & 0.9473 \\
 
 \begin{frame}{Leaderboard --- + TabM}
 \footnotesize
-TabM matches CatBoost on ROC-AUC (0.9796).
+TabM edges ahead of CatBoost on ROC-AUC (0.9798).
 \vspace{0.25cm}
 \begin{center}
 \begin{tabular}{lccc}
 \toprule
 \textbf{Model} & \textbf{Acc} & \textbf{F1} & \textbf{ROC-AUC} \\
 \midrule
+\rowcolor{accent!18}\textbf{TabM} & 0.9207 & 0.9246 & 0.9798 \\
 CatBoost & 0.9211 & 0.9243 & 0.9796 \\
-\rowcolor{accent!18}\textbf{TabM} & 0.9203 & 0.9237 & 0.9796 \\
 XGBoost & 0.9195 & 0.9227 & 0.9784 \\
 Random Forest & 0.9172 & 0.9207 & 0.9768 \\
 AdaBoost & 0.8668 & 0.8698 & 0.9536 \\
@@ -445,20 +445,20 @@ Logistic Regression & 0.8643 & 0.8688 & 0.9473 \\
           without changing the loss it fits.
 \end{itemize}
 \vspace{0.1cm}
-{\footnotesize Completes the gradient-boosting trio --- the fastest of the three.}
+{\footnotesize Completes the gradient-boosting trio.}
 \end{frame}
 
 \begin{frame}{Leaderboard --- + LightGBM}
 \footnotesize
-LightGBM is the fastest and lands just behind XGBoost.
+LightGBM lands just behind XGBoost.
 \vspace{0.25cm}
 \begin{center}
 \begin{tabular}{lccc}
 \toprule
 \textbf{Model} & \textbf{Acc} & \textbf{F1} & \textbf{ROC-AUC} \\
 \midrule
+TabM & 0.9207 & 0.9246 & 0.9798 \\
 CatBoost & 0.9211 & 0.9243 & 0.9796 \\
-TabM & 0.9203 & 0.9237 & 0.9796 \\
 XGBoost & 0.9195 & 0.9227 & 0.9784 \\
 \rowcolor{accent!18}\textbf{LightGBM} & 0.9185 & 0.9218 & 0.9783 \\
 Random Forest & 0.9172 & 0.9207 & 0.9768 \\
@@ -497,8 +497,8 @@ TabPFN leads with no tuning at all.
 \textbf{Model} & \textbf{Acc} & \textbf{F1} & \textbf{ROC-AUC} \\
 \midrule
 \rowcolor{accent!18}\textbf{TabPFN} & 0.9241 & 0.9275 & 0.9810 \\
+TabM & 0.9207 & 0.9246 & 0.9798 \\
 CatBoost & 0.9211 & 0.9243 & 0.9796 \\
-TabM & 0.9203 & 0.9237 & 0.9796 \\
 XGBoost & 0.9195 & 0.9227 & 0.9784 \\
 LightGBM & 0.9185 & 0.9218 & 0.9783 \\
 Random Forest & 0.9172 & 0.9207 & 0.9768 \\
@@ -540,8 +540,8 @@ The ensembles sit just below TabPFN.
 TabPFN & 0.9241 & 0.9275 & 0.9810 \\
 \rowcolor{accent!18}\textbf{Stacking (LR)} & 0.9232 & 0.9266 & 0.9807 \\
 \rowcolor{accent!18}\textbf{Blend (avg 4)} & 0.9226 & 0.9258 & 0.9799 \\
+TabM & 0.9207 & 0.9246 & 0.9798 \\
 CatBoost & 0.9211 & 0.9243 & 0.9796 \\
-TabM & 0.9203 & 0.9237 & 0.9796 \\
 XGBoost & 0.9195 & 0.9227 & 0.9784 \\
 LightGBM & 0.9185 & 0.9218 & 0.9783 \\
 Random Forest & 0.9172 & 0.9207 & 0.9768 \\
@@ -595,12 +595,12 @@ a foundation model plus ensembles; a zero-tuning model wins.}
 \begin{center}
 \begin{tabular}{p{2.3cm} p{4.2cm} p{4.2cm}}
 \toprule
-\textbf{Model} & \textbf{Why it works} & \textbf{Why it lags / costs} \\
+\textbf{Model} & \textbf{Why it works} & \textbf{Why it lags} \\
 \midrule
 LogReg, AdaBoost & simple, interpretable & linear / shallow stumps underfit the AQ-10 $\times$ demographic interactions \\[2pt]
 Random Forest & low bias, captures interactions & higher variance than regularized boosting \\[2pt]
 XGBoost / LightGBM / CatBoost & regularized boosting models interactions; CatBoost's ordered TS is leakage-safe & gains over each other are small; need tuning \\[2pt]
-TabM & deep ensemble lowers variance, well-calibrated & $\sim$1000$\times$ the training cost for boosting-level accuracy \\[2pt]
+TabM & deep ensemble lowers variance, well-calibrated & a more complex deep model for only a marginal gain over boosting \\[2pt]
 TabPFN & learned Bayesian prior over tables; best, zero tuning & assumes small/medium tables; heavier at inference \\[2pt]
 Stacking / Blend & decorrelated errors cancel $\Rightarrow$ steadiest & only as strong as its base models \\
 \bottomrule
@@ -616,15 +616,6 @@ Stacking / Blend & decorrelated errors cancel $\Rightarrow$ steadiest & only as 
 {\footnotesize F1 and ROC-AUC rank the top models in the same order, so the
 ranking is not an artefact of one metric. The gaps near the top are small ---
 the strong methods are close.}
-\end{frame}
-
-\begin{frame}{Accuracy vs.\ training cost}
-\begin{center}
-\includegraphics[width=0.9\textwidth,height=0.62\paperheight,keepaspectratio]{fig_acc_vs_time.png}
-\end{center}
-\vspace{-0.1cm}
-{\footnotesize Time is on a log scale. TabPFN gives the best accuracy at modest cost,
-while TabM needs about 1000$\times$ longer for slightly less --- accuracy is not free.}
 \end{frame}
 
 \begin{frame}{Explainable AI --- global feature importance}

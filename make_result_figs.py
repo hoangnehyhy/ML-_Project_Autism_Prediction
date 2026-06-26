@@ -62,25 +62,5 @@ fig.tight_layout()
 fig.savefig("figures/fig_f1_vs_auc.png", dpi=150, bbox_inches="tight")
 plt.close(fig)
 
-# --------------------------------------------------------- 3. accuracy vs. time
-# Focus on the high-accuracy cluster so the time/accuracy trade-off is readable.
-hi = res[res["Accuracy"] >= 0.915].copy()
-fig, ax = plt.subplots(figsize=(9.5, 5.2))
-for _, r in hi.iterrows():
-    c = RED if r["Model"] == top else DARK
-    ax.scatter(r["Seconds"], r["Accuracy"], s=130, color=c, zorder=5)
-    ax.annotate(r["disp"], (r["Seconds"], r["Accuracy"]),
-                textcoords="offset points", xytext=(9, 0), va="center",
-                fontsize=12, color=c, fontweight="bold")
-ax.set_xscale("log")
-ax.set_xlim(hi["Seconds"].min() * 0.5, hi["Seconds"].max() * 3)
-ax.set_xlabel("Training time per run  (seconds, log scale)")
-ax.set_ylabel("Accuracy (CV)")
-ax.set_title("Accuracy vs. training cost", fontweight="bold", fontsize=18)
-ax.grid(alpha=0.25, which="both")
-fig.tight_layout()
-fig.savefig("figures/fig_acc_vs_time.png", dpi=150, bbox_inches="tight")
-plt.close(fig)
-
-print("regenerated fig_leaderboard_auc.png, fig_f1_vs_auc.png, fig_acc_vs_time.png")
+print("regenerated fig_leaderboard_auc.png, fig_f1_vs_auc.png")
 print(res[["Model", "Accuracy", "F1-Score", "ROC-AUC", "Seconds"]].round(4).to_string(index=False))

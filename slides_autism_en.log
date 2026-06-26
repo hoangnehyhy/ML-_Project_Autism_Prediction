@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025/Debian) (preloaded format=pdflatex 2026.6.26)  26 JUN 2026 18:32
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025/Debian) (preloaded format=pdflatex 2026.6.26)  26 JUN 2026 19:04
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1498,11 +1498,11 @@ line 299.
  [20
 
 ]
-<figures/fig_tuning_panel.png, id=244, 777.6252pt x 494.3268pt>
+<figures/fig_tuning_panel.png, id=244, 787.2612pt x 498.663pt>
 File: figures/fig_tuning_panel.png Graphic file (type png)
 <use figures/fig_tuning_panel.png>
 Package pdftex.def Info: figures/fig_tuning_panel.png  used on input line 311.
-(pdftex.def)             Requested size: 209.47511pt x 133.16075pt.
+(pdftex.def)             Requested size: 210.2209pt x 133.15706pt.
 File: HUST_slide_template/assets/logo/14.pdf Graphic file (type pdf)
 <use HUST_slide_template/assets/logo/14.pdf>
 Package pdftex.def Info: HUST_slide_template/assets/logo/14.pdf  used on input 
@@ -1638,11 +1638,11 @@ line 555.
  [35
 
 ]
-<figures/fig_loss_gbdt.png, id=333, 957.3366pt x 295.8252pt>
+<figures/fig_loss_gbdt.png, id=333, 967.9362pt x 299.6796pt>
 File: figures/fig_loss_gbdt.png Graphic file (type png)
 <use figures/fig_loss_gbdt.png>
 Package pdftex.def Info: figures/fig_loss_gbdt.png  used on input line 565.
-(pdftex.def)             Requested size: 390.3778pt x 120.63007pt.
+(pdftex.def)             Requested size: 390.3726pt x 120.86198pt.
 File: HUST_slide_template/assets/logo/14.pdf Graphic file (type pdf)
 <use HUST_slide_template/assets/logo/14.pdf>
 Package pdftex.def Info: HUST_slide_template/assets/logo/14.pdf  used on input 
@@ -1651,11 +1651,11 @@ line 565.
  [36
 
  <./figures/fig_loss_gbdt.png>]
-<figures/fig_loss_tabm.png, id=340, 569.0058pt x 301.125pt>
+<figures/fig_loss_tabm.png, id=340, 526.6074pt x 308.8338pt>
 File: figures/fig_loss_tabm.png Graphic file (type png)
 <use figures/fig_loss_tabm.png>
 Package pdftex.def Info: figures/fig_loss_tabm.png  used on input line 582.
-(pdftex.def)             Requested size: 223.06612pt x 118.04938pt.
+(pdftex.def)             Requested size: 223.06995pt x 130.82143pt.
 File: HUST_slide_template/assets/logo/14.pdf Graphic file (type pdf)
 <use HUST_slide_template/assets/logo/14.pdf>
 Package pdftex.def Info: HUST_slide_template/assets/logo/14.pdf  used on input 
@@ -1696,6 +1696,10 @@ Underfull \hbox (badness 10000) in paragraph at lines 609--609
 \T5/lmss/m/n/9 Light-GBM /
  []
 
+
+Overfull \vbox (0.678pt too high) detected at line 609
+ []
+
 File: HUST_slide_template/assets/logo/14.pdf Graphic file (type pdf)
 <use HUST_slide_template/assets/logo/14.pdf>
 Package pdftex.def Info: HUST_slide_template/assets/logo/14.pdf  used on input 
@@ -1717,26 +1721,13 @@ line 619.
  [40
 
  <./figures/fig_f1_vs_auc.png>]
-<figures/fig_acc_vs_time.png, id=367, 667.7748pt x 354.123pt>
-File: figures/fig_acc_vs_time.png Graphic file (type png)
-<use figures/fig_acc_vs_time.png>
-Package pdftex.def Info: figures/fig_acc_vs_time.png  used on input line 628.
-(pdftex.def)             Requested size: 299.39542pt x 158.7703pt.
-File: HUST_slide_template/assets/logo/14.pdf Graphic file (type pdf)
-<use HUST_slide_template/assets/logo/14.pdf>
-Package pdftex.def Info: HUST_slide_template/assets/logo/14.pdf  used on input 
-line 628.
-(pdftex.def)             Requested size: 45.32573pt x 13.32037pt.
- [41
-
- <./figures/fig_acc_vs_time.png>]
-<notebooks/shap_bar_plot.png, id=374, 578.16pt x 469.755pt>
+<notebooks/shap_bar_plot.png, id=367, 578.16pt x 469.755pt>
 File: notebooks/shap_bar_plot.png Graphic file (type png)
 <use notebooks/shap_bar_plot.png>
-Package pdftex.def Info: notebooks/shap_bar_plot.png  used on input line 648.
+Package pdftex.def Info: notebooks/shap_bar_plot.png  used on input line 639.
 (pdftex.def)             Requested size: 219.08554pt x 178.007pt.
 
-Overfull \hbox (10.0454pt too wide) detected at line 648
+Overfull \hbox (10.0454pt too wide) detected at line 639
 \OML/lmm/m/it/10 ^^^[]  \OT1/lmss/m/n/10 =    []    [][]\T5/lmss/m/sl/10 f\OT1/
 lmss/m/n/10 (\T5/lmss/m/sl/10 S  \OMS/lmsy/m/n/10 [  f\T5/lmss/m/sl/10 i\OMS/lm
 sy/m/n/10 g\OT1/lmss/m/n/10 )  \OMS/lmsy/m/n/10 ^^@  \T5/lmss/m/sl/10 f\OT1/lms
@@ -1746,47 +1737,55 @@ s/m/n/10 (\T5/lmss/m/sl/10 S\OT1/lmss/m/n/10 )[]
 File: HUST_slide_template/assets/logo/14.pdf Graphic file (type pdf)
 <use HUST_slide_template/assets/logo/14.pdf>
 Package pdftex.def Info: HUST_slide_template/assets/logo/14.pdf  used on input 
-line 648.
+line 639.
 (pdftex.def)             Requested size: 45.32573pt x 13.32037pt.
-[42
+[41
 
  <./notebooks/shap_bar_plot.png>]
-<notebooks/shap_summary_plot.png, id=381, 578.16pt x 686.565pt>
+<notebooks/shap_summary_plot.png, id=374, 578.16pt x 686.565pt>
 File: notebooks/shap_summary_plot.png Graphic file (type png)
 <use notebooks/shap_summary_plot.png>
-Package pdftex.def Info: notebooks/shap_summary_plot.png  used on input line 66
-5.
+Package pdftex.def Info: notebooks/shap_summary_plot.png  used on input line 65
+6.
 (pdftex.def)             Requested size: 150.94441pt x 179.24649pt.
 File: HUST_slide_template/assets/logo/14.pdf Graphic file (type pdf)
 <use HUST_slide_template/assets/logo/14.pdf>
 Package pdftex.def Info: HUST_slide_template/assets/logo/14.pdf  used on input 
-line 665.
+line 656.
 (pdftex.def)             Requested size: 45.32573pt x 13.32037pt.
- [43
+ [42
 
  <./notebooks/shap_summary_plot.png>]
-<notebooks/shap_waterfall_asd.png, id=389, 578.16pt x 469.755pt>
+<notebooks/shap_waterfall_asd.png, id=381, 578.16pt x 469.755pt>
 File: notebooks/shap_waterfall_asd.png Graphic file (type png)
 <use notebooks/shap_waterfall_asd.png>
 Package pdftex.def Info: notebooks/shap_waterfall_asd.png  used on input line 6
-81.
+72.
 (pdftex.def)             Requested size: 163.88629pt x 133.15761pt.
-<notebooks/shap_waterfall_normal.png, id=390, 578.16pt x 469.755pt>
+<notebooks/shap_waterfall_normal.png, id=382, 578.16pt x 469.755pt>
 File: notebooks/shap_waterfall_normal.png Graphic file (type png)
 <use notebooks/shap_waterfall_normal.png>
 Package pdftex.def Info: notebooks/shap_waterfall_normal.png  used on input lin
-e 681.
+e 672.
 (pdftex.def)             Requested size: 163.88629pt x 133.15761pt.
 File: HUST_slide_template/assets/logo/14.pdf Graphic file (type pdf)
 <use HUST_slide_template/assets/logo/14.pdf>
 Package pdftex.def Info: HUST_slide_template/assets/logo/14.pdf  used on input 
-line 681.
+line 672.
 (pdftex.def)             Requested size: 45.32573pt x 13.32037pt.
 
-[44
+[43
 
  <./notebooks/shap_waterfall_asd.png> <./notebooks/shap_waterfall_normal.png>] 
 (./slides_autism_en.toc)
+File: HUST_slide_template/assets/logo/14.pdf Graphic file (type pdf)
+<use HUST_slide_template/assets/logo/14.pdf>
+Package pdftex.def Info: HUST_slide_template/assets/logo/14.pdf  used on input 
+line 674.
+(pdftex.def)             Requested size: 45.32573pt x 13.32037pt.
+ [44
+
+]
 File: HUST_slide_template/assets/logo/14.pdf Graphic file (type pdf)
 <use HUST_slide_template/assets/logo/14.pdf>
 Package pdftex.def Info: HUST_slide_template/assets/logo/14.pdf  used on input 
@@ -1798,40 +1797,32 @@ line 683.
 File: HUST_slide_template/assets/logo/14.pdf Graphic file (type pdf)
 <use HUST_slide_template/assets/logo/14.pdf>
 Package pdftex.def Info: HUST_slide_template/assets/logo/14.pdf  used on input 
-line 692.
+line 697.
 (pdftex.def)             Requested size: 45.32573pt x 13.32037pt.
  [46
-
-]
-File: HUST_slide_template/assets/logo/14.pdf Graphic file (type pdf)
-<use HUST_slide_template/assets/logo/14.pdf>
-Package pdftex.def Info: HUST_slide_template/assets/logo/14.pdf  used on input 
-line 706.
-(pdftex.def)             Requested size: 45.32573pt x 13.32037pt.
- [47
 
  </usr/share/texlive/texmf-dist/tex/latex/beamer/beamericonarticle.pdf>]
 File: HUST_slide_template/assets/logo/14.pdf Graphic file (type pdf)
 <use HUST_slide_template/assets/logo/14.pdf>
 Package pdftex.def Info: HUST_slide_template/assets/logo/14.pdf  used on input 
-line 716.
+line 707.
 (pdftex.def)             Requested size: 45.32573pt x 13.32037pt.
- [48
+ [47
 
 ]
-Overfull \hbox (38.69876pt too wide) in paragraph at lines 726--726
+Overfull \hbox (38.69876pt too wide) in paragraph at lines 717--717
 []| $[]$  
  []
 
-<HUST_slide_template/assets/blue_16x9/theme_hust_oneside.pdf, id=441, 546.29295
+<HUST_slide_template/assets/blue_16x9/theme_hust_oneside.pdf, id=434, 546.29295
 pt x 307.29002pt>
 File: HUST_slide_template/assets/blue_16x9/theme_hust_oneside.pdf Graphic file 
 (type pdf)
 <use HUST_slide_template/assets/blue_16x9/theme_hust_oneside.pdf>
 Package pdftex.def Info: HUST_slide_template/assets/blue_16x9/theme_hust_onesid
-e.pdf  used on input line 726.
+e.pdf  used on input line 717.
 (pdftex.def)             Requested size: 455.24408pt x 256.0775pt.
-[49
+[48
 
  <./HUST_slide_template/assets/blue_16x9/theme_hust_oneside.pdf>]
 \tf@nav=\write6
@@ -1853,10 +1844,10 @@ Package rerunfilecheck Info: File `slides_autism_en.out' has not changed.
 (rerunfilecheck)             Checksum: A71B31EE04FE99D9BF9EBDA2C5AFAA9C;781.
  ) 
 Here is how much of TeX's memory you used:
- 27372 strings out of 468994
- 537024 string characters out of 5459060
- 900344 words of memory out of 5000000
- 55414 multiletter control sequences out of 15000+600000
+ 27357 strings out of 468994
+ 536657 string characters out of 5459060
+ 900309 words of memory out of 5000000
+ 55401 multiletter control sequences out of 15000+600000
  815078 words of font info for 112 fonts, out of 8000000 for 9000
  264 hyphenation exceptions out of 8191
  128i,13n,123p,391b,832s stack positions out of 10000i,1000n,20000p,200000b,200000s
@@ -1874,10 +1865,10 @@ pe1/public/lm/lmsy8.pfb></usr/share/texmf/fonts/type1/public/lm/lmsy9.pfb></usr
 /share/texmf/fonts/type1/public/lm/lmtt10.pfb></usr/share/texmf/fonts/type1/pub
 lic/lm/lmtt9.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/sym
 bols/msbm10.pfb>
-Output written on slides_autism_en.pdf (49 pages, 1999500 bytes).
+Output written on slides_autism_en.pdf (48 pages, 1918522 bytes).
 PDF statistics:
- 557 PDF objects out of 1000 (max. 8388607)
- 413 compressed objects within 5 object streams
- 115 named destinations out of 1000 (max. 500000)
- 242 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 548 PDF objects out of 1000 (max. 8388607)
+ 407 compressed objects within 5 object streams
+ 113 named destinations out of 1000 (max. 500000)
+ 237 words of extra memory for PDF output out of 10000 (max. 10000000)
 
