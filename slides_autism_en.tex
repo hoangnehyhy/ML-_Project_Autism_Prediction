@@ -1,68 +1,97 @@
-\documentclass{beamer}
+\documentclass[aspectratio=169]{beamer}
 
-\usetheme{Madrid}
+% Resolve the HUST theme + its assets from the bundled template folder.
+\makeatletter
+\def\input@path{{HUST_slide_template/}}
+\makeatother
 
-\usepackage{iftex}
-\ifPDFTeX
-  \usepackage{lmodern}
-  \usepackage[utf8]{vietnam}
-\else
-  \usepackage{fontspec}
-  \setsansfont{DejaVu Sans}
-  \setmainfont{DejaVu Sans}
-\fi
+\usetheme[theme=blue,logo=hustwithtexten,assetext=pdf]{HUST}
 
-\usepackage{xcolor}
-\usepackage{colortbl}
-\usepackage{graphicx}
-\usepackage{amsmath}
+\usepackage{lmodern}
+\usepackage{cmap}
+\usepackage[T5]{fontenc}
+\usepackage{amsmath,amssymb}
 \usepackage{booktabs}
+\usepackage{colortbl}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning}
 
-\graphicspath{{figures/}{notebooks/}}
+\graphicspath{{HUST_slide_template/}{figures/}{notebooks/}}
 
-\definecolor{accent}{HTML}{B0152F}
-\setbeamercolor{frametitle}{bg=white,fg=accent}
-\setbeamercolor{structure}{fg=accent}
-\setbeamercolor{title}{bg=white,fg=accent}
 \setbeamertemplate{navigation symbols}{}
-\setbeamertemplate{frametitle}{\vspace{4pt}\textbf{\insertframetitle}\par\vspace{-2pt}}
+% Reserve bottom space so content clears the HUST footer (drawn as a background overlay).
+\setbeamertemplate{footline}{\rule{0pt}{0.11\paperheight}}
 
-\newcommand{\hl}[1]{\textbf{\color{accent}#1}}
+\colorlet{accent}{HUSTRed}
 
-\title[ASD Screening with ML]{Autism Spectrum Disorder Screening with Machine Learning}
-\subtitle{From a leaky baseline to a foundation-model ensemble}
-\author[Group --- HUST]{%
-  Trần Trung Hiếu \\
-  Phạm Song Hào \\
-  Nguyễn Đức Hoàng \\
-  Vũ Xuân Sơn \\
-  Đặng Quốc Vượng}
-\institute{Hanoi University of Science and Technology}
-\date{\today}
+% Helper to place free-floating content (used by the title/closing slides).
+\newcommand{\placecontent}[4]{%
+  \tikz[remember picture,overlay]
+    \node[anchor=north west]
+      at ([xshift=#1,yshift=-#2]current page.north west)
+      {\parbox{#3}{#4}};
+}
+
+\title[Autism Spectrum Disorder]{Autism Spectrum Disorder}
+\author[Group 6]{%
+  Trần Trung Hiếu - 20235934 \\
+  Phạm Song Hào - 20235930 \\
+  Nguyễn Đức Hoàng - 20235938 \\
+  Vũ Xuân Sơn - 20235995 \\
+  Đặng Quốc Vượng - 20236015}
+\institute[]{Hanoi University of Science and Technology}
+\date{June 26, 2026}
+
+\AtBeginSection[]{%
+  \begin{frame}<beamer>{Outline}
+    \tableofcontents[currentsection]
+  \end{frame}
+}
 
 \begin{document}
 
+\HUSTInsertBrandSlide
+
+{\HUSTUseBackground{onelove}
 \begin{frame}
-    \titlepage
+  \placecontent{0.55cm}{0.26\paperheight}{0.86\paperwidth}{%
+    \color{\HUSTFrameTitleTextColor}\bfseries\fontsize{26pt}{32pt}\selectfont
+    \inserttitle
+  }
+  \placecontent{0.55cm}{0.40\paperheight}{0.72\paperwidth}{%
+    \color{\HUSTFrameTitleTextColor}\fontsize{11pt}{15pt}\selectfont
+    \textbf{Group 6 --- Machine Learning}\\[6pt]
+    \insertauthor
+  }
 \end{frame}
+}
 
-\begin{frame}{Outline}
-    \tableofcontents
-\end{frame}
+\section{Problem and pipeline}
 
-\section{Problem \& Pipeline}
-
-\begin{frame}{The problem}
+\begin{frame}{Autism Spectrum Disorder and early screening}
 \begin{itemize}
-    \item Diagnosing ASD is \hl{slow and costly}; early screening helps early support.
-    \item The \hl{AQ-10} questionnaire (\texttt{A1}--\texttt{A10}) gives a fast screening score.
-    \item A fixed score cut-off is unreliable in the \hl{grey zone} (score 4--6).
+    \item Autism Spectrum Disorder (ASD) changes how a person communicates,
+          behaves, and interacts with others. Signs usually appear in early childhood.
+    \item A full clinical diagnosis is slow and costly: it needs trained
+          specialists, long interviews, and often months on a waiting list.
+    \item A cheap, fast screening step helps families reach support sooner ---
+          when that support helps the most.
+    \item Screening does not replace a doctor. It only flags who should be seen first.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{From a questionnaire to a prediction}
+\begin{itemize}
+    \item AQ-10: ten short yes/no questions about everyday behaviour
+          (\texttt{A1}--\texttt{A10}). Each autistic-like answer adds 1 point.
+    \item Each person also gives simple facts: age, sex, jaundice at birth,
+          family history of autism, and who filled in the form.
+    \item A single fixed cut-off on the score is unreliable in the grey zone
+          (score 4--6), where ASD and non-ASD cases overlap.
 \end{itemize}
 \vspace{0.3cm}
-\textbf{Goal.} Learn from AQ-10 + demographics to flag likely ASD cases ---
-\hl{accurately} and \hl{honestly} (no data leakage).
+Goal: learn from the AQ-10 answers plus the background facts to flag likely
+ASD cases accurately and honestly, with no data leakage.
 \end{frame}
 
 \begin{frame}{Project pipeline}
@@ -87,247 +116,380 @@
 \end{center}
 \vspace{0.2cm}
 \begin{itemize}
-    \item One leakage-free cleaning pipeline feeds \hl{every} model.
-    \item Every model uses the \hl{same 5-fold Stratified CV} --- a fair race.
+    \item One leakage-free cleaning pipeline feeds every model.
+    \item Every model is evaluated with the same 5-fold Stratified CV --- a fair race.
 \end{itemize}
 \end{frame}
 
-\section{Data \& the leakage pitfall}
+\section{Dataset and preprocessing}
 
-\begin{frame}{The raw data --- and its traps}
+\begin{frame}{Dataset overview}
+\begin{center}
+\includegraphics[width=0.97\textwidth]{fig_data_overview.png}
+\end{center}
+\vspace{0.15cm}
+\begin{columns}
+\begin{column}{0.5\textwidth}
+\footnotesize
+\begin{tabular}{lcc}
+\toprule
+\textbf{Feature group} & \textbf{Type} & \textbf{Count} \\
+\midrule
+AQ-10 answers (\texttt{A1}--\texttt{A10}) & binary & 10 \\
+\texttt{age} & numeric & 1 \\
+sex, jaundice, family ASD & binary & 3 \\
+ethnicity, relation & categorical & 2 \\
+\midrule
+\texttt{result} (AQ-10 total) & leaky & dropped \\
+country, \texttt{used\_app\_before} & constant & dropped \\
+\bottomrule
+\end{tabular}
+\end{column}
+\begin{column}{0.5\textwidth}
+\footnotesize
+\begin{itemize}
+    \item Raw: 3{,}743 rows $\times$ 22 columns, no missing values.
+    \item After cleaning + GAN augmentation: 23{,}743 rows $\times$ 33 features.
+    \item Target balance: 53\% ASD / 47\% non-ASD.
+    \item \texttt{result} is the sum of \texttt{A1}--\texttt{A10}, so it is dropped:
+          keeping it would leak the label.
+\end{itemize}
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Raw data: quality issues}
 \begin{columns}
 \begin{column}{0.56\textwidth}
 \begin{itemize}
-    \item 3{,}743 rows, 22 columns, \hl{no missing values}.
-    \item \texttt{age} max $= \hl{383}$ $\Rightarrow$ data-entry error.
-    \item \texttt{contry\_of\_res}, \texttt{used\_app\_before}: \hl{one value only} (no signal).
-    \item \texttt{ethnicity}: duplicates from typos\\(\texttt{White European} vs \texttt{White-European}).
+    \item 3{,}743 rows, 22 columns, no missing values.
+    \item \texttt{age} max $= 383$ $\Rightarrow$ a data-entry error.
+    \item \texttt{contry\_of\_res}, \texttt{used\_app\_before}: one value only
+          (no signal).
+    \item \texttt{ethnicity}: duplicates from typos\\(\texttt{White European} vs
+          \texttt{White-European}).
 \end{itemize}
 \end{column}
 \begin{column}{0.44\textwidth}
 \begin{center}
-\includegraphics[width=\linewidth]{fig_classbalance.png}
+\includegraphics[width=\linewidth,height=0.58\paperheight,keepaspectratio]{fig_classbalance.png}
 \end{center}
 \end{column}
 \end{columns}
 \vspace{0.1cm}
-{\footnotesize Target is balanced (53/47) $\Rightarrow$ SMOTE/GAN are for \emph{robustness}, not for balance.}
+{\footnotesize The target is balanced (53/47), so SMOTE/GAN are used for
+robustness, not to fix class imbalance.}
 \end{frame}
 
-\begin{frame}{Cleaning \& encoding}
-\begin{itemize}
-    \item Drop zero-variance columns; merge typo categories.
-    \item Clip the age outlier to the \hl{median}.
-    \item Encode categoricals with \hl{One-Hot} --- safe, no label peeking.
-\end{itemize}
-\vspace{0.3cm}
-{\footnotesize Output: a clean table reused by all later notebooks.}
+\begin{frame}{Cleaning pipeline}
+We run one fixed cleaning script that turns the raw table into model-ready features:
+\begin{enumerate}
+    \item Drop columns with no signal (single value, IDs, the leaky total score).
+    \item Fix the \texttt{age} outlier by clipping it to the median.
+    \item Merge category typos so the same group is counted once.
+    \item One-hot encode the remaining text columns.
+\end{enumerate}
+\vspace{0.25cm}
+{\footnotesize The next three slides show each step on the real data.
+Output: one clean table reused by all later notebooks.}
+\end{frame}
+
+\begin{frame}{Step 1 --- fix the age outlier}
+\begin{center}
+\includegraphics[width=0.95\textwidth,height=0.62\paperheight,keepaspectratio]{fig_prep_age.png}
+\end{center}
+\vspace{-0.1cm}
+{\footnotesize One person is listed as 383 years old. We replace any age above
+100 with the median (8 yr), so a single typo cannot distort the model.}
+\end{frame}
+
+\begin{frame}{Step 2 --- merge typo categories}
+\begin{center}
+\includegraphics[width=0.95\textwidth,height=0.62\paperheight,keepaspectratio]{fig_prep_ethnicity.png}
+\end{center}
+\vspace{-0.1cm}
+{\footnotesize Spelling and dash differences split one real group into two
+(\texttt{White-European} + \texttt{White European}). Merging them gives each
+category its true count.}
+\end{frame}
+
+\begin{frame}{Step 3 --- one-hot encode}
+\begin{center}
+\includegraphics[width=0.95\textwidth,height=0.60\paperheight,keepaspectratio]{fig_prep_onehot.png}
+\end{center}
+\vspace{-0.1cm}
+{\footnotesize Each text category becomes its own 0/1 column. This encoding
+never looks at the label, so it cannot leak the answer (unlike target encoding).}
 \end{frame}
 
 \begin{frame}{The target-leakage pitfall}
-Early baseline scored a \hl{fake-perfect} ROC-AUC $= 0.9995$. Why?
+An early baseline scored a fake-perfect ROC-AUC $= 0.9995$. Why?
 \[
 \text{enc}(c)=\frac{1}{|\{i:x_i=c\}|}\sum_{i:\,x_i=c} y_i
-\quad\text{computed on \hl{all} data before CV.}
+\quad\text{computed on \emph{all} data before CV.}
 \]
 \begin{itemize}
-    \item Encoding a category by its mean \emph{label} leaks the answer $y$.
-    \item The model ``sees'' the target through the feature $\Rightarrow$ unreal scores.
-    \item \hl{Fix:} compute encodings inside folds, or just use One-Hot.
+    \item Encoding a category by its mean label hides the answer $y$ inside the feature.
+    \item The model sees the target through that feature $\Rightarrow$ unreal scores.
+    \item Fix: compute encodings inside each fold, or just use one-hot.
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Honest numbers beat perfect numbers}
+\begin{frame}{Effect of leakage removal and added noise}
 \begin{center}
-\includegraphics[width=0.86\textwidth]{fig_stages.png}
+\includegraphics[width=0.86\textwidth,height=0.64\paperheight,keepaspectratio]{fig_stages.png}
 \end{center}
 \vspace{-0.1cm}
-{\footnotesize Score \emph{drops} as we remove leakage and add realistic noise ---
-this is the model getting \hl{trustworthy}, not weaker.}
+{\footnotesize The score drops as we remove leakage and add realistic noise ---
+the model is becoming trustworthy, not weaker.}
 \end{frame}
 
 \section{Data generation}
 
-\begin{frame}{SMOTE --- interpolate new samples}
-Create a synthetic point between a sample and a neighbour:
+\begin{frame}{SMOTE --- interpolating new samples}
+Goal: add believable new training rows (not blind copies) so the model is robust.
 \[
 x_{\text{new}} = x_i + \lambda\,(x_i^{\text{nn}} - x_i),\qquad \lambda \sim U(0,1).
 \]
 \begin{itemize}
-    \item Fills gaps \emph{between} real points (not blind copies).
-    \item Applied \hl{only on the training fold} to avoid leakage.
+    \item Take a sample $x_i$, pick one of its nearest neighbours $x_i^{\text{nn}}$,
+          and place a new point on the line between them.
+    \item The new point sits between two real points, so it stays realistic.
+    \item Applied only on the training fold, never on validation $\Rightarrow$ no leakage.
 \end{itemize}
 \end{frame}
 
 \begin{frame}{Tabular GAN (PyTorch, from scratch)}
-Two networks play a \hl{min--max} game:
+Two small networks compete in a min--max game:
 \[
 \min_G \max_D \; \mathbb{E}_{x}\!\left[\log D(x)\right]
 + \mathbb{E}_{z}\!\left[\log\big(1-D(G(z))\big)\right].
 \]
+\begin{columns}
+\begin{column}{0.54\textwidth}
+\footnotesize
 \begin{itemize}
-    \item \hl{Generator} $G$: turns noise $z$ into fake patient rows.
-    \item \hl{Discriminator} $D$: tells real from fake.
-    \item We sampled \hl{+20k} train and \hl{+2k} test rows $\Rightarrow$ harder, more realistic data.
+    \item Generator $G$ maps random noise $z$ to fake patient rows; discriminator
+          $D$ tries to separate real rows from fake ones.
+    \item As $D$ improves, $G$ is pushed to make more realistic rows; the two
+          losses settle near an equilibrium.
+    \item We sampled +20k train and +2k test rows $\Rightarrow$ a larger, harder,
+          more realistic set.
 \end{itemize}
+\end{column}
+\begin{column}{0.46\textwidth}
+\begin{center}
+\includegraphics[width=\linewidth,height=0.46\paperheight,keepaspectratio]{fig_loss_gan.png}
+\end{center}
+\end{column}
+\end{columns}
 \end{frame}
 
 \section{Models}
 
-\begin{frame}{How we compare}
+\begin{frame}{Evaluation protocol}
 \begin{itemize}
-    \item \hl{5-fold Stratified CV} on the unified \hl{23{,}743}-row set.
-    \item Headline metrics: \hl{F1-Score} and \hl{ROC-AUC} (threshold-free).
-    \item We keep \hl{one leaderboard} and add each new method to it.
+    \item One unified 23{,}743-row cleaned set; the same
+          \texttt{StratifiedKFold(5, shuffle, seed=42)} for every model.
+    \item Headline metrics: F1-Score and ROC-AUC (threshold-free); accuracy reported too.
+    \item For each model we search a compact grid of configurations and keep the
+          \emph{best by ROC-AUC} --- so every model is compared at its best.
+    \item One leaderboard, extended as each method is added.
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Baselines --- the classics}
+\begin{frame}{Hyperparameter tuning}
+Each model is tuned with the same 5-fold CV; the best configuration enters the
+leaderboard.
+\begin{center}
+\includegraphics[width=0.72\textwidth,height=0.52\paperheight,keepaspectratio]{fig_tuning_panel.png}
+\end{center}
+\vspace{-0.1cm}
+{\footnotesize Validation AUC is flat near the optimum (e.g.\ XGBoost
+\texttt{lr} 0.03--0.05, LightGBM \texttt{num\_leaves} 31, CatBoost \texttt{depth} 8)
+--- the models are robust, not knife-edge.}
+\end{frame}
+
+\begin{frame}{Baseline models}
 \begin{itemize}
-    \item \hl{Logistic Regression} --- linear log-odds: $\log\frac{p}{1-p}=w^{\!\top}x+b$. Simple, interpretable.
-    \item \hl{Random Forest} --- average many de-correlated deep trees (bagging) to cut variance.
-    \item \hl{AdaBoost} --- add stumps sequentially, re-weighting the samples each one gets wrong.
-    \item \hl{XGBoost} --- regularized gradient boosting; our strongest baseline.
+    \item Logistic Regression --- linear log-odds:
+          $\log\frac{p}{1-p}=w^{\!\top}x+b$. Simple and interpretable.
+    \item Random Forest --- average many de-correlated deep trees (bagging) to cut variance.
+    \item AdaBoost --- add stumps one by one, re-weighting the samples each one gets wrong.
+    \item XGBoost --- regularized gradient boosting; our strongest baseline.
 \end{itemize}
 \vspace{0.2cm}
-{\footnotesize These set the bar the modern methods must beat.}
+{\footnotesize These set the bar that the modern methods must beat.}
 \end{frame}
 
 \begin{frame}{Leaderboard --- baselines}
 \footnotesize
-Starting point: \hl{XGBoost} leads the four classics.
+Starting point: XGBoost leads the four baselines.
 \vspace{0.25cm}
 \begin{center}
 \begin{tabular}{lccc}
 \toprule
 \textbf{Model} & \textbf{Acc} & \textbf{F1} & \textbf{ROC-AUC} \\
 \midrule
-\rowcolor{accent!18}\textbf{XGBoost} & 0.9162 & 0.9197 & 0.9767 \\
-Random Forest & 0.9151 & 0.9191 & 0.9748 \\
-AdaBoost & 0.8624 & 0.8656 & 0.9511 \\
-Logistic Regression & 0.8643 & 0.8687 & 0.9473 \\
+\rowcolor{accent!18}\textbf{XGBoost} & 0.9195 & 0.9227 & 0.9784 \\
+Random Forest & 0.9172 & 0.9207 & 0.9768 \\
+AdaBoost & 0.8668 & 0.8698 & 0.9536 \\
+Logistic Regression & 0.8643 & 0.8688 & 0.9473 \\
 \bottomrule
 \end{tabular}
 \end{center}
 \end{frame}
 
-\begin{frame}{CatBoost --- ordered boosting}
+\begin{frame}{Gradient boosting --- the shared engine}
+\small
+XGBoost, LightGBM, and CatBoost are all additive ensembles of trees built by
+functional gradient descent:
+\[
+F_m(x)=F_{m-1}(x)+\nu\,h_m(x),\qquad h_m \approx -\,\frac{\partial L}{\partial F_{m-1}}.
+\]
 \begin{itemize}
-    \item Gradient boosting on \hl{oblivious trees} (same split per level) --- fast and regularized.
-    \item Encodes categories with \hl{ordered target statistics}, using only \emph{earlier} rows:
+    \item Each new tree $h_m$ fits the negative gradient of the loss $L$;
+          the learning rate $\nu$ shrinks its step.
+    \item XGBoost adds a regularized, second-order objective:
+    \[
+    \mathcal{L}=\sum_i l(y_i,\hat{y}_i)+\sum_k \Omega(f_k),\qquad
+    \Omega(f)=\gamma T+\tfrac12\lambda\lVert w\rVert^2 ,
+    \]
+    penalising the number of leaves $T$ and the leaf weights $w$.
+    \item The three models differ in \emph{how} they grow and regularize these trees.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{CatBoost: ordered boosting and target statistics}
+\small
+\begin{itemize}
+    \item Uses oblivious trees (the same split on a whole level), which keeps it
+          fast and well regularized.
+    \item For categories it uses ordered target statistics --- a running label
+          average over \emph{earlier} rows only:
     \[
     \hat{x}_i=\frac{\sum_{j<i}\mathbb{1}[x_j=x_i]\,y_j+a\,p}{\sum_{j<i}\mathbb{1}[x_j=x_i]+a}.
     \]
-    \item \hl{Ordered boosting} stops a sample seeing its own label $\Rightarrow$ no prediction shift.
+    \item Ordered boosting applies the same use-only-the-past rule to the
+          gradients, so a row never sees its own label $\Rightarrow$ no prediction shift.
 \end{itemize}
 \vspace{0.1cm}
-{\footnotesize Directly cures the Phase-1 leakage --- and trains in just 15.8s.}
+{\footnotesize This directly cures the Phase-1 target-leakage problem.}
 \end{frame}
 
 \begin{frame}{Leaderboard --- + CatBoost}
 \footnotesize
-CatBoost takes over \hl{\#1}.
+CatBoost takes the top spot.
 \vspace{0.25cm}
 \begin{center}
 \begin{tabular}{lccc}
 \toprule
 \textbf{Model} & \textbf{Acc} & \textbf{F1} & \textbf{ROC-AUC} \\
 \midrule
-\rowcolor{accent!18}\textbf{CatBoost} & 0.9207 & 0.9237 & 0.9794 \\
-XGBoost & 0.9162 & 0.9197 & 0.9767 \\
-Random Forest & 0.9151 & 0.9191 & 0.9748 \\
-AdaBoost & 0.8624 & 0.8656 & 0.9511 \\
-Logistic Regression & 0.8643 & 0.8687 & 0.9473 \\
+\rowcolor{accent!18}\textbf{CatBoost} & 0.9211 & 0.9243 & 0.9796 \\
+XGBoost & 0.9195 & 0.9227 & 0.9784 \\
+Random Forest & 0.9172 & 0.9207 & 0.9768 \\
+AdaBoost & 0.8668 & 0.8698 & 0.9536 \\
+Logistic Regression & 0.8643 & 0.8688 & 0.9473 \\
 \bottomrule
 \end{tabular}
 \end{center}
 \end{frame}
 
-\begin{frame}{TabM --- one MLP, many members}
+\begin{frame}{TabM: parameter-efficient deep ensembling (BatchEnsemble)}
+\small
 \begin{itemize}
-    \item A neural net (MLP), but it behaves like \hl{$k$ ensembled MLPs} at $\approx$1$\times$ the cost.
-    \item \hl{BatchEnsemble}: one shared matrix $W$ + a rank-1 adapter $(r_k,s_k)$ per member:
+    \item A plain MLP is one network. An ensemble of $k$ MLPs predicts better,
+          but costs about $k\times$ to train.
+    \item TabM keeps one shared weight matrix $W$ and gives each member a cheap
+          rank-1 adapter $(r_k,s_k)$, so the $k$ members cost $\approx$1$\times$:
     \[
     W_k = W \odot (r_k\,s_k^{\!\top}),\qquad
     \hat{p}=\frac{1}{k}\sum_{m=1}^{k}\mathrm{softmax}\big(f_{W_m}(x)\big).
     \]
-    \item Averaging members \hl{reduces variance} (better calibration), adapters keep it cheap.
+    \item Each member sees the data a little differently, so their mistakes differ.
+    \item Averaging the members cancels noise and lowers variance, giving
+          better-calibrated probabilities.
 \end{itemize}
-\vspace{0.1cm}
-{\footnotesize Top-tier accuracy (AUC 0.9796) but \hl{slow to train} ($\sim$1637s on CPU).}
 \end{frame}
 
 \begin{frame}{Leaderboard --- + TabM}
 \footnotesize
-TabM edges ahead on ROC-AUC.
+TabM edges ahead of CatBoost on ROC-AUC (0.9798).
 \vspace{0.25cm}
 \begin{center}
 \begin{tabular}{lccc}
 \toprule
 \textbf{Model} & \textbf{Acc} & \textbf{F1} & \textbf{ROC-AUC} \\
 \midrule
-\rowcolor{accent!18}\textbf{TabM} & 0.9203 & 0.9237 & 0.9796 \\
-CatBoost & 0.9207 & 0.9237 & 0.9794 \\
-XGBoost & 0.9162 & 0.9197 & 0.9767 \\
-Random Forest & 0.9151 & 0.9191 & 0.9748 \\
-AdaBoost & 0.8624 & 0.8656 & 0.9511 \\
-Logistic Regression & 0.8643 & 0.8687 & 0.9473 \\
+\rowcolor{accent!18}\textbf{TabM} & 0.9207 & 0.9246 & 0.9798 \\
+CatBoost & 0.9211 & 0.9243 & 0.9796 \\
+XGBoost & 0.9195 & 0.9227 & 0.9784 \\
+Random Forest & 0.9172 & 0.9207 & 0.9768 \\
+AdaBoost & 0.8668 & 0.8698 & 0.9536 \\
+Logistic Regression & 0.8643 & 0.8688 & 0.9473 \\
 \bottomrule
 \end{tabular}
 \end{center}
 \end{frame}
 
-\begin{frame}{LightGBM --- histogram boosting}
+\begin{frame}{LightGBM: histogram and leaf-wise boosting}
+\small
 \begin{itemize}
-    \item Gradient boosting that \hl{bins} continuous features into histograms $\Rightarrow$ fast split search.
-    \item \hl{Leaf-wise} (best-first) tree growth + sample/feature bundling for extra speed.
-    \item Same additive idea, each tree fitting the negative gradient:
-    \[
-    F_m(x) = F_{m-1}(x) + \nu\,h_m(x),\qquad h_m \approx -\nabla_F L.
-    \]
+    \item Same gradient-boosting objective as XGBoost, but tuned for speed.
+    \item Bins each continuous feature into a histogram (e.g.\ 255 buckets), so
+          the best split is found by scanning buckets, not every value.
+    \item Grows trees leaf-wise (always split the leaf that cuts the loss most),
+          reaching lower error with fewer splits.
+    \item GOSS and exclusive feature bundling further cut the work per tree
+          without changing the loss it fits.
 \end{itemize}
 \vspace{0.1cm}
-{\footnotesize The \hl{fastest} learner here --- a full 5-fold run in just 1.2s.}
+{\footnotesize Completes the gradient-boosting trio.}
 \end{frame}
 
 \begin{frame}{Leaderboard --- + LightGBM}
 \footnotesize
-Fast and competitive --- lands just behind the leaders.
+LightGBM lands just behind XGBoost.
 \vspace{0.25cm}
 \begin{center}
 \begin{tabular}{lccc}
 \toprule
 \textbf{Model} & \textbf{Acc} & \textbf{F1} & \textbf{ROC-AUC} \\
 \midrule
-TabM & 0.9203 & 0.9237 & 0.9796 \\
-CatBoost & 0.9207 & 0.9237 & 0.9794 \\
-\rowcolor{accent!18}\textbf{LightGBM} & 0.9187 & 0.9220 & 0.9780 \\
-XGBoost & 0.9162 & 0.9197 & 0.9767 \\
-Random Forest & 0.9151 & 0.9191 & 0.9748 \\
-AdaBoost & 0.8624 & 0.8656 & 0.9511 \\
-Logistic Regression & 0.8643 & 0.8687 & 0.9473 \\
+TabM & 0.9207 & 0.9246 & 0.9798 \\
+CatBoost & 0.9211 & 0.9243 & 0.9796 \\
+XGBoost & 0.9195 & 0.9227 & 0.9784 \\
+\rowcolor{accent!18}\textbf{LightGBM} & 0.9185 & 0.9218 & 0.9783 \\
+Random Forest & 0.9172 & 0.9207 & 0.9768 \\
+AdaBoost & 0.8668 & 0.8698 & 0.9536 \\
+Logistic Regression & 0.8643 & 0.8688 & 0.9473 \\
 \bottomrule
 \end{tabular}
 \end{center}
 \end{frame}
 
-\begin{frame}{TabPFN --- a tabular foundation model}
+\begin{frame}{TabPFN: in-context learning for tables}
+\small
 \begin{itemize}
-    \item A \hl{transformer} pre-trained \emph{once} on millions of synthetic tables.
-    \item At use time: feed the training rows + a test row as context, predict in \hl{one forward pass}
-    --- \hl{no gradient training, no tuning}:
+    \item A transformer trained \emph{once} on millions of synthetic tables,
+          so it learns a general prior over how tabular data behaves.
+    \item At use time you do not train at all: feed the whole training set plus a
+          test row as context, and it predicts in a single forward pass
+          (in-context learning):
     \[
-    p\big(y \mid x,\, \mathcal{D}_{\text{train}}\big)\;\approx\;\text{single in-context inference}.
+    p\big(y \mid x,\, \mathcal{D}_{\text{train}}\big)\;\approx\;\text{one in-context forward pass}.
     \]
-    \item Learns a prior over datasets $\Rightarrow$ approximates the Bayesian posterior predictive.
+    \item Because it learned a prior over datasets, it approximates the Bayesian
+          posterior predictive --- like averaging over many plausible models.
 \end{itemize}
 \vspace{0.1cm}
-{\footnotesize \hl{Best single model} (F1 0.9275, AUC 0.9810) in $\sim$42s, straight out of the box.}
+{\footnotesize Best single model out of the box (F1 0.9275, AUC 0.9810); built for small/medium tables.}
 \end{frame}
 
 \begin{frame}{Leaderboard --- + TabPFN}
 \footnotesize
-\hl{TabPFN jumps straight to \#1} --- with no tuning at all.
+TabPFN leads with no tuning at all.
 \vspace{0.25cm}
 \begin{center}
 \begin{tabular}{lccc}
@@ -335,35 +497,40 @@ Logistic Regression & 0.8643 & 0.8687 & 0.9473 \\
 \textbf{Model} & \textbf{Acc} & \textbf{F1} & \textbf{ROC-AUC} \\
 \midrule
 \rowcolor{accent!18}\textbf{TabPFN} & 0.9241 & 0.9275 & 0.9810 \\
-TabM & 0.9203 & 0.9237 & 0.9796 \\
-CatBoost & 0.9207 & 0.9237 & 0.9794 \\
-LightGBM & 0.9187 & 0.9220 & 0.9780 \\
-XGBoost & 0.9162 & 0.9197 & 0.9767 \\
-Random Forest & 0.9151 & 0.9191 & 0.9748 \\
-AdaBoost & 0.8624 & 0.8656 & 0.9511 \\
-Logistic Regression & 0.8643 & 0.8687 & 0.9473 \\
+TabM & 0.9207 & 0.9246 & 0.9798 \\
+CatBoost & 0.9211 & 0.9243 & 0.9796 \\
+XGBoost & 0.9195 & 0.9227 & 0.9784 \\
+LightGBM & 0.9185 & 0.9218 & 0.9783 \\
+Random Forest & 0.9172 & 0.9207 & 0.9768 \\
+AdaBoost & 0.8668 & 0.8698 & 0.9536 \\
+Logistic Regression & 0.8643 & 0.8688 & 0.9473 \\
 \bottomrule
 \end{tabular}
 \end{center}
 \end{frame}
 
-\begin{frame}{Stacking \& blending}
+\begin{frame}{Stacking and blending}
+\small
 \begin{itemize}
-    \item Train base models with CV, keep their \hl{out-of-fold (OOF)} predictions (leakage-free).
-    \item \hl{Blending} --- average the probabilities: $\;\hat{p}=\tfrac{1}{M}\sum_m p_m(x)$.
-    \item \hl{Stacking} --- a logistic-regression meta-learner over those predictions:
+    \item Train several diverse base models with CV and keep their out-of-fold (OOF)
+          predictions --- each row is predicted only by models that did not see it,
+          so it stays leakage-free.
+    \item Blending --- average the probabilities: $\;\hat{p}=\tfrac{1}{M}\sum_m p_m(x)$.
+    \item Stacking --- a logistic-regression meta-learner reads those
+          predictions and learns how much to trust each model:
     \[
     \hat{p}=\sigma\!\Big(\sum_m w_m\,p_m(x)+b\Big).
     \]
-    \item Diverse models' errors partly cancel $\Rightarrow$ \hl{steadier} than any single model.
+    \item The base models make different mistakes, so combining them cancels errors
+          and is steadier than any single model.
 \end{itemize}
 \vspace{0.1cm}
 {\footnotesize Base learners: TabPFN + CatBoost + LightGBM + XGBoost.}
 \end{frame}
 
-\begin{frame}{Leaderboard --- + Stacking \& Blending}
+\begin{frame}{Leaderboard --- + stacking and blending}
 \scriptsize
-Ensembles fill the podium just under TabPFN.
+The ensembles sit just below TabPFN.
 \vspace{0.15cm}
 \begin{center}
 \begin{tabular}{lccc}
@@ -373,13 +540,13 @@ Ensembles fill the podium just under TabPFN.
 TabPFN & 0.9241 & 0.9275 & 0.9810 \\
 \rowcolor{accent!18}\textbf{Stacking (LR)} & 0.9232 & 0.9266 & 0.9807 \\
 \rowcolor{accent!18}\textbf{Blend (avg 4)} & 0.9226 & 0.9258 & 0.9799 \\
-TabM & 0.9203 & 0.9237 & 0.9796 \\
-CatBoost & 0.9207 & 0.9237 & 0.9794 \\
-LightGBM & 0.9187 & 0.9220 & 0.9780 \\
-XGBoost & 0.9162 & 0.9197 & 0.9767 \\
-Random Forest & 0.9151 & 0.9191 & 0.9748 \\
-AdaBoost & 0.8624 & 0.8656 & 0.9511 \\
-Logistic Regression & 0.8643 & 0.8687 & 0.9473 \\
+TabM & 0.9207 & 0.9246 & 0.9798 \\
+CatBoost & 0.9211 & 0.9243 & 0.9796 \\
+XGBoost & 0.9195 & 0.9227 & 0.9784 \\
+LightGBM & 0.9185 & 0.9218 & 0.9783 \\
+Random Forest & 0.9172 & 0.9207 & 0.9768 \\
+AdaBoost & 0.8668 & 0.8698 & 0.9536 \\
+Logistic Regression & 0.8643 & 0.8688 & 0.9473 \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -387,45 +554,85 @@ Logistic Regression & 0.8643 & 0.8687 & 0.9473 \\
 
 \section{Results}
 
-\begin{frame}{Final leaderboard}
+\begin{frame}{Training diagnostics --- gradient boosting}
 \begin{center}
-\includegraphics[width=0.9\textwidth]{fig_leaderboard_auc.png}
+\includegraphics[width=0.98\textwidth,height=0.58\paperheight,keepaspectratio]{fig_loss_gbdt.png}
 \end{center}
-\vspace{-0.15cm}
-{\footnotesize From \hl{LogReg 0.947} to \hl{TabPFN 0.981} ROC-AUC. Top-3 = foundation model
-+ ensembles; a zero-tuning model wins.}
+\vspace{-0.1cm}
+{\footnotesize Train logloss keeps falling while validation logloss flattens and
+then creeps up --- the gap is the onset of overfitting, and the marked round is
+where we would stop. All three converge to a similar validation loss.}
 \end{frame}
 
-\begin{frame}{Accuracy vs. cost}
+\begin{frame}{Training diagnostics --- TabM}
 \begin{columns}
-\begin{column}{0.6\textwidth}
-\includegraphics[width=\linewidth]{fig_acc_vs_time.png}
+\begin{column}{0.56\textwidth}
+\includegraphics[width=\linewidth,height=0.62\paperheight,keepaspectratio]{fig_loss_tabm.png}
 \end{column}
-\begin{column}{0.4\textwidth}
-\begin{itemize}\small
-    \item \hl{LightGBM}: 1.2s, very strong value.
-    \item \hl{TabPFN}: best score, $\sim$42s, no tuning.
-    \item \hl{TabM}: 1637s --- accuracy at a steep cost.
+\begin{column}{0.44\textwidth}
+\small
+\begin{itemize}
+    \item Training cross-entropy (black) falls smoothly as the ensemble fits.
+    \item Validation AUC (red) rises, then plateaus; we keep the best-AUC epoch
+          (dashed) and stop early.
+    \item No runaway gap $\Rightarrow$ the rank-1 ensemble regularizes the MLP.
 \end{itemize}
 \end{column}
 \end{columns}
 \end{frame}
 
-\begin{frame}{Explainable AI --- which features matter (global)}
+\begin{frame}{Final leaderboard}
+\begin{center}
+\includegraphics[width=0.9\textwidth,height=0.64\paperheight,keepaspectratio]{fig_leaderboard_auc.png}
+\end{center}
+\vspace{-0.15cm}
+{\footnotesize From LogReg 0.947 to TabPFN 0.981 ROC-AUC. The top of the table is
+a foundation model plus ensembles; a zero-tuning model wins.}
+\end{frame}
+
+\begin{frame}{Why each model wins or lags}
+\footnotesize
+\begin{center}
+\begin{tabular}{p{2.3cm} p{4.2cm} p{4.2cm}}
+\toprule
+\textbf{Model} & \textbf{Why it works} & \textbf{Why it lags} \\
+\midrule
+LogReg, AdaBoost & simple, interpretable & linear / shallow stumps underfit the AQ-10 $\times$ demographic interactions \\[2pt]
+Random Forest & low bias, captures interactions & higher variance than regularized boosting \\[2pt]
+XGBoost / LightGBM / CatBoost & regularized boosting models interactions; CatBoost's ordered TS is leakage-safe & gains over each other are small; need tuning \\[2pt]
+TabM & deep ensemble lowers variance, well-calibrated & a more complex deep model for only a marginal gain over boosting \\[2pt]
+TabPFN & learned Bayesian prior over tables; best, zero tuning & assumes small/medium tables; heavier at inference \\[2pt]
+Stacking / Blend & decorrelated errors cancel $\Rightarrow$ steadiest & only as strong as its base models \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{frame}
+
+\begin{frame}{F1 vs.\ ROC-AUC agreement}
+\begin{center}
+\includegraphics[width=0.92\textwidth,height=0.62\paperheight,keepaspectratio]{fig_f1_vs_auc.png}
+\end{center}
+\vspace{-0.1cm}
+{\footnotesize F1 and ROC-AUC rank the top models in the same order, so the
+ranking is not an artefact of one metric. The gaps near the top are small ---
+the strong methods are close.}
+\end{frame}
+
+\begin{frame}{Explainable AI --- global feature importance}
 \begin{columns}
 \begin{column}{0.55\textwidth}
-\includegraphics[width=\linewidth]{shap_bar_plot.png}
+\includegraphics[width=\linewidth,height=0.70\paperheight,keepaspectratio]{shap_bar_plot.png}
 \end{column}
 \begin{column}{0.45\textwidth}
 \small
-SHAP value = a feature's fair contribution (Shapley value):
+A SHAP value is a feature's fair contribution (a Shapley value):
 \[
 \phi_i\!=\!\!\!\sum_{S\subseteq F\setminus\{i\}}\!\!\!
 \frac{|S|!\,(|F|\!-\!|S|\!-\!1)!}{|F|!}\big(f(S\!\cup\!\{i\})\!-\!f(S)\big)
 \]
 \begin{itemize}
-    \item \hl{AQ-10 items} (A6, A5, A7, A9) on top.
-    \item \hl{Developmental milestones} (\texttt{age\_first\_sentence}) just as strong.
+    \item AQ-10 items (A6, A5, A7, A9) sit on top.
+    \item Developmental milestones (\texttt{age\_first\_sentence}) matter just as much.
 \end{itemize}
 \end{column}
 \end{columns}
@@ -434,15 +641,15 @@ SHAP value = a feature's fair contribution (Shapley value):
 \begin{frame}{SHAP --- how each feature pushes the output}
 \begin{columns}
 \begin{column}{0.6\textwidth}
-\includegraphics[width=\linewidth]{shap_summary_plot.png}
+\includegraphics[width=\linewidth,height=0.70\paperheight,keepaspectratio]{shap_summary_plot.png}
 \end{column}
 \begin{column}{0.4\textwidth}
 \small
 \begin{itemize}
-    \item One dot = one patient; \hl{colour = feature value} (red high, blue low).
-    \item Right of 0 $\Rightarrow$ pushes towards \hl{ASD}.
-    \item \hl{High} AQ-10 scores (red, right) raise ASD risk --- clinically sensible.
-    \item Late \texttt{age\_first\_sentence} (red) strongly raises risk.
+    \item One dot = one patient; colour = feature value (red high, blue low).
+    \item Right of 0 $\Rightarrow$ pushes towards ASD.
+    \item High AQ-10 scores (red, on the right) raise ASD risk --- clinically sensible.
+    \item A late \texttt{age\_first\_sentence} (red) strongly raises risk.
 \end{itemize}
 \end{column}
 \end{columns}
@@ -451,35 +658,33 @@ SHAP value = a feature's fair contribution (Shapley value):
 \begin{frame}{SHAP --- per-patient explanations}
 \begin{columns}
 \begin{column}{0.5\textwidth}
-\centering {\footnotesize\hl{ASD case} \quad $f(x)=5.77$}\\[2pt]
-\includegraphics[width=\linewidth]{shap_waterfall_asd.png}
+\centering {\footnotesize ASD case \quad $f(x)=5.77$}\\[2pt]
+\includegraphics[width=\linewidth,height=0.52\paperheight,keepaspectratio]{shap_waterfall_asd.png}
 \end{column}
 \begin{column}{0.5\textwidth}
-\centering {\footnotesize \hl{Non-ASD case} \quad $f(x)=-2.62$}\\[2pt]
-\includegraphics[width=\linewidth]{shap_waterfall_normal.png}
+\centering {\footnotesize Non-ASD case \quad $f(x)=-2.62$}\\[2pt]
+\includegraphics[width=\linewidth,height=0.52\paperheight,keepaspectratio]{shap_waterfall_normal.png}
 \end{column}
 \end{columns}
 \vspace{0.1cm}
-{\footnotesize \textcolor{accent}{Red} bars push up (towards ASD), blue down. Same model,
-a \hl{transparent reason} for every individual prediction.}
+{\footnotesize \textcolor{accent}{Red} bars push up (towards ASD), blue bars push down.
+Same model --- a transparent reason for every individual prediction.}
 \end{frame}
 
 \section{Conclusion}
 
-\begin{frame}{Conclusion \& future work}
+\begin{frame}{Conclusion}
 \begin{enumerate}
-    \item Built a \hl{leakage-free} pipeline --- honest scores over fake-perfect ones.
-    \item \hl{GAN/SMOTE} augmentation made the model robust to realistic noise.
-    \item Fair race of 10 models: \hl{TabPFN} wins; \hl{stacking} is a steady runner-up.
-    \item \hl{SHAP} confirms clinically sensible drivers.
+    \item Built a leakage-free pipeline --- honest scores over fake-perfect ones.
+    \item GAN/SMOTE augmentation made the model robust to realistic noise.
+    \item A fair race of 10 tuned models: TabPFN wins; stacking is a steady runner-up.
+    \item SHAP confirms clinically sensible drivers.
 \end{enumerate}
-\vspace{0.3cm}
-\textbf{Next:} deploy as a phone-based pre-screening aid for parents.
 \end{frame}
 
 \section*{References}
 
-\begin{frame}[allowframebreaks]{References}
+\begin{frame}{References}
 \footnotesize
 \begin{thebibliography}{9}
 \bibitem{kaggle} Kaggle, \emph{Autism Prediction Challenge} dataset.
@@ -488,17 +693,28 @@ a \hl{transparent reason} for every individual prediction.}
 \bibitem{xgb} Chen \& Guestrin (2016). \emph{XGBoost: A Scalable Tree Boosting System}. arXiv:1603.02754.
 \bibitem{lgbm} Ke et al. (2017). \emph{LightGBM: A Highly Efficient Gradient Boosting Decision Tree}. NeurIPS.
 \bibitem{catboost} Prokhorenkova et al. (2018). \emph{CatBoost: Unbiased Boosting with Categorical Features}. arXiv:1706.09516.
+\end{thebibliography}
+\end{frame}
+
+\begin{frame}{References (cont.)}
+\footnotesize
+\begin{thebibliography}{9}
+\setcounter{enumiv}{6}
 \bibitem{shap} Lundberg \& Lee (2017). \emph{A Unified Approach to Interpreting Model Predictions (SHAP)}. arXiv:1705.07874.
 \bibitem{tabpfn} Hollmann et al. (2022). \emph{TabPFN: A Transformer That Solves Small Tabular Problems in a Second}. arXiv:2207.01848.
 \bibitem{tabm} Gorishniy et al. (2024). \emph{TabM: Advancing Tabular DL with Parameter-Efficient Ensembling}. arXiv:2410.24210.
 \end{thebibliography}
 \end{frame}
 
+{\HUSTUseBackground{theme_hust_oneside}
 \begin{frame}
-\begin{center}
-{\Large\textbf{\color{accent}Thank you!}}\\[0.4cm]
-{\footnotesize Questions \& discussion}
-\end{center}
+  \hspace*{0.36\paperwidth}%
+  \begin{minipage}{0.60\paperwidth}
+    \centering
+    {\color{HUSTRed}\bfseries\fontsize{30pt}{38pt}\selectfont THANK YOU!}\\[10pt]
+    {\color{HUSTRed}\bfseries\fontsize{16pt}{20pt}\selectfont Questions \& discussion}
+  \end{minipage}
 \end{frame}
+}
 
 \end{document}
