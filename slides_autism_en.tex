@@ -252,8 +252,8 @@ Goal: add believable new training rows (not blind copies) so the model is robust
 x_{\text{new}} = x_i + \lambda\,(x_i^{\text{nn}} - x_i),\qquad \lambda \sim U(0,1).
 \]
 \begin{itemize}
-    \item Take a sample $x_i$, pick one of its nearest neighbours $x_i^{\text{nn}}$,
-          and place a new point on the line between them.
+    \item A new sample is placed on the line between a real point $x_i$ and one
+          of its nearest neighbours $x_i^{\text{nn}}$.
     \item The new point sits between two real points, so it stays realistic.
     \item Applied only on the training fold, never on validation $\Rightarrow$ no leakage.
 \end{itemize}
@@ -474,9 +474,9 @@ Logistic Regression & 0.8643 & 0.8688 & 0.9473 \\
 \begin{itemize}
     \item A transformer trained \emph{once} on millions of synthetic tables,
           so it learns a general prior over how tabular data behaves.
-    \item At use time you do not train at all: feed the whole training set plus a
-          test row as context, and it predicts in a single forward pass
-          (in-context learning):
+    \item At inference there is no training step: the entire training set and a
+          test row are supplied as context, and the label is predicted in a
+          single forward pass (in-context learning):
     \[
     p\big(y \mid x,\, \mathcal{D}_{\text{train}}\big)\;\approx\;\text{one in-context forward pass}.
     \]
