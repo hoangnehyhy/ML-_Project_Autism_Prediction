@@ -11,3 +11,5 @@ scipy==1.17.1
 seaborn==0.13.2
 torch==2.12.1
 xgboost==3.2.0
+tabpfn-client
+tabpfn>=2.0.0
