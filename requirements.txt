@@ -1,6 +1,7 @@
 catboost==1.2.10
 imbalanced-learn==0.14.0
 ipykernel==7.2.0
+lightgbm==4.6.0
 matplotlib==3.10.9
 nbformat==5.10.4
 numpy==2.4.4
@@ -9,5 +10,6 @@ plotly==6.8.0
 scikit-learn==1.8.0
 scipy==1.17.1
 seaborn==0.13.2
+tabpfn==8.0.8
 torch==2.12.1
 xgboost==3.2.0
