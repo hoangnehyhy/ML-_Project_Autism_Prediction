@@ -4,6 +4,7 @@ import torch.optim as optim
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import MinMaxScaler
+import matplotlib.pyplot as plt
 import os
 
 def train_and_generate_gan():
@@ -83,41 +84,67 @@ def train_and_generate_gan():
     
     # 4. Training Loop
     print("Training the PyTorch Tabular GAN...")
+    hist_d, hist_g = [], []   # per-epoch average losses, for the diagnostic curve
     for epoch in range(epochs):
+        ep_d, ep_g, n_batches = 0.0, 0.0, 0
         for batch in loader:
             real_batch = batch[0]
             current_batch_size = real_batch.size(0)
-            
+
             # --- Train Discriminator ---
             opt_disc.zero_grad()
-            
+
             # Real samples
             labels_real = torch.ones(current_batch_size, 1) * 0.9 # Label smoothing
             pred_real = discriminator(real_batch)
             loss_disc_real = criterion(pred_real, labels_real)
-            
+
             # Fake samples
             noise = torch.randn(current_batch_size, noise_dim)
             fake_batch = generator(noise)
             labels_fake = torch.zeros(current_batch_size, 1)
             pred_fake = discriminator(fake_batch.detach())
             loss_disc_fake = criterion(pred_fake, labels_fake)
-            
+
             loss_disc = loss_disc_real + loss_disc_fake
             loss_disc.backward()
             opt_disc.step()
-            
+
             # --- Train Generator ---
             opt_gen.zero_grad()
             pred_fake_for_gen = discriminator(fake_batch)
             loss_gen = criterion(pred_fake_for_gen, torch.ones(current_batch_size, 1))
             loss_gen.backward()
             opt_gen.step()
-            
+
+            ep_d += loss_disc.item(); ep_g += loss_gen.item(); n_batches += 1
+
+        hist_d.append(ep_d / n_batches); hist_g.append(ep_g / n_batches)
         if (epoch + 1) % 50 == 0:
-            print(f"  Epoch [{epoch+1}/{epochs}] | Loss D: {loss_disc.item():.4f} | Loss G: {loss_gen.item():.4f}")
-            
+            print(f"  Epoch [{epoch+1}/{epochs}] | Loss D: {hist_d[-1]:.4f} | Loss G: {hist_g[-1]:.4f}")
+
     print("GAN training completed successfully!")
+
+    # 4b. Save the adversarial loss curve (generator vs. discriminator)
+    fig_dir = "./figures"
+    os.makedirs(fig_dir, exist_ok=True)
+    pd.DataFrame({"epoch": range(1, epochs + 1), "loss_D": hist_d, "loss_G": hist_g}) \
+        .to_csv(f"{fig_dir}/gan_loss_history.csv", index=False)
+    RED, DARK = "#9B1B30", "#1f1f1f"
+    plt.rcParams.update({"font.size": 14, "axes.spines.top": False,
+                         "axes.spines.right": False, "figure.facecolor": "white",
+                         "axes.facecolor": "white"})
+    fig, ax = plt.subplots(figsize=(7.4, 4.4))
+    ax.plot(range(1, epochs + 1), hist_d, color=DARK, lw=2, label="Discriminator $D$")
+    ax.plot(range(1, epochs + 1), hist_g, color=RED, lw=2, label="Generator $G$")
+    ax.set_xlabel("epoch"); ax.set_ylabel("BCE loss")
+    ax.set_title("Tabular GAN — adversarial training loss",
+                 color=DARK, fontweight="bold")
+    ax.grid(alpha=0.25); ax.legend(frameon=False)
+    fig.tight_layout()
+    fig.savefig(f"{fig_dir}/fig_loss_gan.png", dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Saved {fig_dir}/fig_loss_gan.png")
     
     # 5. Generate 20,000 samples
     print("Generating 20,000 synthetic samples...")

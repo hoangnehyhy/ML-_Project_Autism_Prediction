@@ -1,0 +1,6 @@
+\beamer@sectionintoc {1}{Problem and pipeline}{3}{0}{1}
+\beamer@sectionintoc {2}{Dataset and preprocessing}{7}{0}{2}
+\beamer@sectionintoc {3}{Data generation}{16}{0}{3}
+\beamer@sectionintoc {4}{Models}{19}{0}{4}
+\beamer@sectionintoc {5}{Results}{35}{0}{5}
+\beamer@sectionintoc {6}{Conclusion}{45}{0}{6}
