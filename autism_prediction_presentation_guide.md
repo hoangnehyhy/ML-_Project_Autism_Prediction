@@ -24,6 +24,11 @@ graph TD
     I --> J["Huấn luyện mô hình trên tập Ghép (23.7k)"]
     J --> K["Mô hình sẵn sàng triển khai<br>(Test F1: 87.36%, ROC-AUC: 0.9445)"]
     style K fill:#b3ffb3,stroke:#333,stroke-width:2px
+
+    K --> L["Phase 6-7: Mô hình nâng cao<br>CatBoost · TabM · LightGBM · TabPFN"]
+    L --> M["Học kết hợp<br>(Stacking / Blending)"]
+    M --> N["Mô hình tốt nhất: TabPFN<br>(5-fold CV: F1 92.75%, ROC-AUC 0.9810)"]
+    style N fill:#b3d9ff,stroke:#333,stroke-width:2px
 ```
 
 ---
@@ -36,6 +41,41 @@ graph TD
 | **Giai đoạn 2:** Baseline sửa lỗi | 3,743 mẫu | 97.92% | 98.05% | **0.9976** | Sạch rò rỉ, nhưng dữ liệu synthetic gốc quá dễ |
 | **Giai đoạn 3:** Sinh dữ liệu GAN | 20,000 mẫu | 89.38% | 89.86% | **0.9664** | Tăng độ đa dạng, làm mờ biên quyết định |
 | **Giai đoạn 4:** Mô hình Cuối (Ghép) | **Tập Test: 2,000 mẫu** | **86.10%** | **87.36%** | **0.9445** | **Độc lập, tối ưu hóa tổng quát hóa thực tế** |
+
+---
+
+## 🔬 BỔ SUNG — Phase 6 & 7: Mô hình nâng cao & Học kết hợp (Stacking)
+
+> Các mô hình dưới đây được đánh giá **công bằng bằng cùng một quy trình 5-fold Stratified Cross-Validation** trên tập dữ liệu hợp nhất **23.743 mẫu** (khác với bảng "giai đoạn" ở trên dùng tập test độc lập 2k). Chỉ số chính: **F1-Score** và **ROC-AUC**.
+
+### Bảng xếp hạng đầy đủ (5-fold CV trên tập 23.7k)
+
+| Hạng | Mô hình | Accuracy | F1-Score | ROC-AUC | Ghi chú |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 🥇 | **TabPFN** (foundation model) | 0.9241 | **0.9275** | **0.9810** | Mạnh nhất, **không cần tinh chỉnh** |
+| 🥈 | **Stacking (Logistic Reg.)** | 0.9232 | 0.9266 | 0.9807 | Meta-learner trên 4 base model |
+| 🥉 | Blend (trung bình 4 model) | 0.9226 | 0.9258 | 0.9799 | Ensemble đơn giản |
+|  | CatBoost | 0.9207 | 0.9237 | 0.9794 | Nhanh (15.8s) |
+|  | TabM | 0.9203 | 0.9237 | 0.9796 | MLP + BatchEnsemble (chậm: 1637s) |
+|  | LightGBM | 0.9187 | 0.9220 | 0.9780 | Nhanh nhất (1.2s) |
+|  | XGBoost | 0.9162 | 0.9197 | 0.9767 | Baseline gradient boosting |
+|  | Random Forest | 0.9151 | 0.9191 | 0.9748 | Baseline bagging |
+|  | AdaBoost | 0.8624 | 0.8656 | 0.9511 | Baseline yếu |
+|  | Logistic Regression | 0.8643 | 0.8687 | 0.9473 | Baseline tuyến tính |
+
+### Diễn giải các kỹ thuật (ý tưởng + công thức cốt lõi)
+
+* **Bộ ba Gradient Boosting (XGBoost / CatBoost / LightGBM):** đều xây mô hình cộng dồn từng cây sửa lỗi cây trước: `F_m(x) = F_{m-1}(x) + ν·h_m(x)`.
+  * **CatBoost:** dùng *ordered boosting* & *ordered target statistics* để chống rò rỉ nhãn — chính là vấn đề ta gặp ở Phase 1.
+  * **LightGBM:** boosting dựa trên histogram → **nhanh nhất** (1.2s).
+* **TabM (Phase 6):** một MLP nhưng "đóng giả" thành `k` mạng nhờ kỹ thuật **BatchEnsemble**: chung một ma trận trọng số `W`, mỗi thành viên thêm bộ chỉnh hạng-1 `W_k = W ⊙ (r_k · s_kᵀ)`; dự đoán = trung bình softmax của `k` thành viên → giảm phương sai.
+* **TabPFN (Phase 7):** **foundation model dạng Transformer** đã được huấn luyện trước trên hàng triệu bảng dữ liệu nhân tạo. Dự đoán chỉ bằng **một lượt forward** (in-context learning), **không cần huấn luyện/tinh chỉnh** — vậy mà cho kết quả **tốt nhất** (ROC-AUC 0.9810).
+* **Stacking & Blending (Phase 7):** lấy dự đoán out-of-fold của 4 base model (TabPFN + CatBoost + LightGBM + XGBoost) rồi kết hợp:
+  * **Blending** = trung bình cộng xác suất.
+  * **Stacking** = huấn luyện một **Logistic Regression meta-learner** trên các dự đoán đó: `p̂ = σ(Σ wₘ·pₘ + b)`.
+
+### Thông điệp thuyết trình cho Phase 6 & 7
+> "Sau khi có pipeline dữ liệu sạch, chúng tôi chạy một 'cuộc đua' công bằng giữa 10 mô hình. Kết quả cho thấy **foundation model TabPFN** — không cần tinh chỉnh — đã vượt mọi mô hình tự huấn luyện, và **Stacking** giúp gộp điểm mạnh các mô hình lại để đạt kết quả ổn định gần như tốt nhất."
 
 ---
 
@@ -89,10 +129,27 @@ graph TD
 * **Kết quả:** F1-score đạt **87.36%**, ROC-AUC đạt **94.45%** (XGBoost dẫn đầu).
 * **Ghi chú thuyết trình:** Nhấn mạnh việc giảm độ chính xác từ `98%` xuống `87%` không phải là mô hình yếu đi, mà là mô hình đã **thực tế hơn, đáng tin cậy hơn** và sẵn sàng hoạt động với dữ liệu nhiễu ngoài đời thực.
 
-### Slide 8: Giải thích Mô hình (Explainable AI - XAI)
+### Slide 8: Mô hình nâng cao — CatBoost & TabM (Phase 6)
+* **Nội dung:** Mở rộng baseline bằng 2 mô hình bảng hiện đại, đánh giá bằng **cùng 5-fold CV**.
+* **CatBoost:** gradient boosting trên cây oblivious, chống rò rỉ nhãn (ordered boosting). AUC 0.9794, **rất nhanh (15.8s)**.
+* **TabM:** MLP + BatchEnsemble (1 ma trận chung + bộ chỉnh hạng-1 cho từng thành viên). AUC 0.9796 nhưng **chậm (1637s)**.
+* **Ghi chú:** nhấn mạnh đánh đổi **độ chính xác vs. tốc độ**.
+
+### Slide 9: Foundation Model — TabPFN & LightGBM (Phase 7)
+* **LightGBM:** boosting theo histogram, hoàn thiện bộ ba GBDT, **nhanh nhất (1.2s)**, AUC 0.9780.
+* **TabPFN:** Transformer huấn luyện sẵn trên bảng nhân tạo, dự đoán bằng **một lượt forward, không cần tinh chỉnh** → **dẫn đầu** (F1 0.9275, AUC 0.9810).
+* **Thông điệp:** một mô hình "zero-tuning" lại mạnh nhất — điểm bất ngờ đáng để nhấn mạnh.
+
+### Slide 10: Học kết hợp (Stacking & Blending) + Bảng xếp hạng tổng
+* **Nội dung:** gộp dự đoán out-of-fold của TabPFN + CatBoost + LightGBM + XGBoost.
+  * **Blending** = trung bình xác suất (AUC 0.9799).
+  * **Stacking** = Logistic Regression meta-learner (AUC 0.9807).
+* **Trình chiếu:** bảng xếp hạng đầy đủ 10 mô hình (xem mục 🔬 ở trên) — đây là slide "so sánh kết quả" trung tâm.
+
+### Slide 11: Giải thích Mô hình (Explainable AI - XAI)
 * **Nội dung:** Phân tích tầm quan trọng của các đặc trưng (Feature Importance).
 * **Kết quả:** 10 câu hỏi sàng lọc vẫn đóng vai trò chính (~52% độ quan trọng), tiếp theo là tiền sử gia đình tự kỷ `austim` (~10%) và độ tuổi `age` (~8%). Điều này hoàn toàn trùng khớp với các nghiên cứu y khoa thực tế.
 
-### Slide 9: Kết luận & Hướng phát triển
+### Slide 12: Kết luận & Hướng phát triển
 * **Nội dung:** Dự án đã xây dựng thành công pipeline làm sạch dữ liệu không rò rỉ, tối ưu hóa độ robust bằng mạng GAN và đạt hiệu năng thực tế tin cậy.
 * **Hướng đi tiếp theo:** Tích hợp mô hình vào giao diện ứng dụng di động để hỗ trợ phụ huynh sàng lọc nhanh tại nhà.

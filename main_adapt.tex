@@ -1,0 +1,783 @@
+\documentclass{beamer}
+
+\usetheme{Madrid}
+
+\usepackage{iftex}
+\ifPDFTeX
+  \IfFileExists{vietnam.sty}{%
+    \usepackage[utf8]{vietnam}%
+  }{%
+    \usepackage[T1]{fontenc}%
+    \usepackage{ucs}%
+    \usepackage[utf8x]{inputenc}%
+  }
+\else
+  \usepackage{fontspec}
+  \setsansfont{DejaVu Sans}
+  \setmainfont{DejaVu Sans}
+\fi
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
+
+\title{CNN cho AMC}
+
+\author{Đặng Quốc Vượng}
+\institute{HUST}
+\date{\today}
+
+% bảng nhỏ gọn dùng lại
+\newcommand{\hl}[1]{\textbf{#1}}
+
+\begin{document}
+
+\begin{frame}
+    \titlepage
+\end{frame}
+
+% ====================================================================
+\section{Tổng quan}
+
+\begin{frame}{Quy trình tổng thể}
+\large
+\[
+\text{AMC gốc} \;\Rightarrow\; \text{CNN} \;\Rightarrow\;
+\begin{array}{c}\text{AdaBN}\\ \text{Self-train}\end{array} \;\Rightarrow\;
+\begin{array}{c}\text{per-box}\\ \text{WTA}\end{array}
+\]
+\normalsize
+\vspace{0.3cm}
+\begin{enumerate}
+    \item \hl{AMC gốc:} quyết định ô bằng ngưỡng độ đậm (darkness).
+    \item \hl{CNN:} học sửa ô AMC quyết định sai.
+    \item \hl{Thích nghi:} AdaBN + Self-train để chịu nguồn scan lạ.
+    \item \hl{Quyết định:} per-box hay winner-take-all (WTA).
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Mục tiêu}
+\begin{itemize}
+    \item Thay bước quyết định ô tô/trống của AMC bằng CNN.
+    \item \hl{Sửa} ô AMC sai (flip), \hl{giữ} ô AMC vốn đúng.
+    \item \hl{Không} sửa lõi AMC, \hl{không} cần nhãn người trên đề mới.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Nhãn (nhắc lại)}
+\begin{itemize}
+    \item \texttt{amc} = 1 nếu $black \ge 0.5\cdot total$ (quyết định darkness).
+    \item \texttt{gold} = \texttt{manual} nếu người chấm ghi đè, ngược lại = \texttt{amc}.
+    \item \texttt{flip} = ô người chấm ghi đè khác AMC (tức AMC sai).
+\end{itemize}
+\vspace{0.3cm}
+{\footnotesize 4 nguồn đã rà tay: IT3020E-kip1/kip2, trr-kip1/kip2 --- tổng 64\,750 ô.}
+\end{frame}
+
+% ====================================================================
+\section{Kiến trúc CNN}
+
+\begin{frame}{Kiến trúc CNN --- sơ đồ}
+\begin{center}
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  node distance=2.4cm,
+  tensor/.style={draw, rounded corners, fill=blue!10, minimum width=2cm,
+                 minimum height=1.1cm, align=center, font=\small},
+  arr/.style={-{Latex[length=2.5mm]}, thick}
+]
+\node[tensor] (in) {Ảnh\\$1\times32\times32$};
+\node[tensor, right=of in]  (a)   {$16\times16\times16$};
+\node[tensor, right=of a]   (b)   {$32\times8\times8$};
+\node[tensor, right=of b]   (c)   {$64\times1\times1$};
+\node[tensor, right=of c, fill=green!12] (out) {2 logit\\\{trống, tô\}};
+\draw[arr] (in) -- node[above, font=\scriptsize, align=center]
+      {Khối 1\\Conv $1\!\to\!16$\\BN+ReLU+MaxPool} (a);
+\draw[arr] (a)  -- node[above, font=\scriptsize, align=center]
+      {Khối 2\\Conv $16\!\to\!32$\\BN+ReLU+MaxPool} (b);
+\draw[arr] (b)  -- node[above, font=\scriptsize, align=center]
+      {Khối 3\\Conv $32\!\to\!64$\\BN+ReLU+GAP} (c);
+\draw[arr] (c)  -- node[above, font=\scriptsize, align=center]
+      {Flatten\\Linear $64\!\to\!2$} (out);
+\end{tikzpicture}%
+}
+\end{center}
+\vspace{0.2cm}
+\begin{center}
+\begin{tabular}{|l|c|c|c|c|c|}
+\hline
+\textbf{Khối} & Khối 1 & Khối 2 & Khối 3 & Head & \textbf{Tổng} \\
+\hline
+\textbf{\#Tham số} & 192 & 4.704 & 18.624 & 130 & \textbf{23.650} \\
+\hline
+\end{tabular}
+\end{center}
+\vspace{0.1cm}
+{\footnotesize Không gian co lại ($32\!\to\!1$), số kênh nở ra ($1\!\to\!64$); đầu vào ảnh ô xám 32$\times$32.}
+\end{frame}
+
+\begin{frame}{Kiến trúc CNN --- thành phần}
+\footnotesize
+\begin{itemize}
+    \item \hl{Conv} $3\times3$: dò đặc trưng cục bộ (nét chì, viền tròn, vết tẩy); chia sẻ trọng số.
+    \item \hl{BN} (BatchNorm): chuẩn hóa mỗi kênh $\Rightarrow$ train ổn định, bớt nhạy độ sáng.
+    \item \hl{ReLU}: phi tuyến $\max(0,x)$.
+    \item \hl{MaxPool $2\times2$}: giảm nửa độ phân giải, giữ tín hiệu mạnh.
+    \item \hl{GAP} (Global Average Pooling): trung bình bản đồ $\to$ vector 64; head chỉ 130 tham số.
+    \item \hl{Linear $64\!\to\!2$} + softmax: xác suất ``tô''.
+\end{itemize}
+\vspace{0.2cm}
+Vùng tiếp nhận (receptive field) cuối: \hl{18} pixel gốc.
+\end{frame}
+
+\begin{frame}{Kiến trúc giữ nguyên --- cải tiến nằm ở quanh mạng}
+\vspace{0.25cm}
+\begin{itemize}
+    \item Lõi CNN (23.650 tham số) \hl{không đổi}.
+    \item \hl{Lúc train:} augment mạnh (domain randomization) + ensemble nhiều seed.
+    \item \hl{Lúc chạy:} AdaBN + Self-train (thích nghi nguồn mới, không cần nhãn).
+    \item \hl{Quyết định:} winner-take-all (WTA) thay per-box; cổng tự tin.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Ensemble nhiều seed}
+\vspace{0.25cm}
+\begin{itemize}
+    \item Train \hl{5 mô hình} cùng kiến trúc, khác seed (khởi tạo / xáo trộn).
+    \item Khi dự đoán: \hl{trung bình xác suất} của 5 mô hình.
+    \item $\Rightarrow$ giảm phương sai, kết quả \hl{ổn định}, ít phụ thuộc may rủi một lần train.
+\end{itemize}
+\end{frame}
+
+% ====================================================================
+\section{Hàm mất mát}
+
+\begin{frame}{Đầu ra mạng --- softmax}
+Mỗi ô cho \hl{2 logit} $z=(z_{\text{trống}},\,z_{\text{tô}})$.
+
+\textbf{Softmax} đổi logit thành xác suất:
+\[
+p_c=\frac{e^{z_c}}{e^{z_{\text{trống}}}+e^{z_{\text{tô}}}},
+\qquad p_{\text{trống}}+p_{\text{tô}}=1 .
+\]
+\vspace{0.2cm}
+Quyết định cơ bản: ô là ``tô'' nếu $p_{\text{tô}}\ge 0.5$.
+\end{frame}
+
+\begin{frame}{Hàm mất mát --- cross-entropy}
+Với 1 ô, nhãn đúng $y$, mất mát = $-\log$ xác suất gán cho \emph{lớp đúng}:
+\[
+\ell = -\,w_{y}\,\log p_{y}.
+\]
+Tổng trên cả tập:
+\[
+L=\frac{1}{\sum_i w_{y_i}}\sum_i \big(-\,w_{y_i}\log p_{i,y_i}\big).
+\]
+\vspace{0.1cm}
+{\footnotesize \texttt{nn.CrossEntropyLoss} = \texttt{LogSoftmax}+\texttt{NLLLoss}: đưa logit thô, không tự softmax.}
+\end{frame}
+
+\begin{frame}{Hàm mất mát --- giải thích kí hiệu}
+\scriptsize
+\begin{center}
+\begin{tabular}{|c|l|}
+\hline
+\textbf{Kí hiệu} & \textbf{Ý nghĩa} \\
+\hline
+$c$ & lớp: \emph{trống} (0) hoặc \emph{tô} (1) \\
+$z_c$ & logit (điểm thô) của lớp $c$, đầu ra mạng trước softmax \\
+$e^{z_c}$ & hàm mũ ($e\approx 2{,}718$) --- đưa logit về số dương \\
+$p_c$ & xác suất model gán cho lớp $c$ (sau softmax), $\sum_c p_c=1$ \\
+$y$ & nhãn đúng của 1 ô (lớp thật, lấy từ gold) \\
+$p_y$ & xác suất model gán cho \emph{lớp đúng} \\
+$\log$ & logarit tự nhiên (ln) \\
+$w_c$ & trọng số lớp $c$ ($w_c=N/2n_c$); $w_y$ = của lớp đúng \\
+$N,\ n_c$ & tổng số ô train; số ô thuộc lớp $c$ \\
+$i,\ \sum_i$ & chỉ số ô và tổng trên mọi ô trong tập \\
+$\ell,\ L$ & mất mát 1 ô; tổng mất mát cả tập \\
+\hline
+\end{tabular}
+\end{center}
+\vspace{0.15cm}
+{\scriptsize $p_{i,y_i}$ = xác suất ô $i$ ở \emph{đúng} lớp của nó. Mẫu số $\sum_i w_{y_i}$ chỉ \emph{chuẩn hóa} $\Rightarrow$ $L$ là trung bình \emph{có trọng số} của mất mát từng ô.}
+\end{frame}
+
+\begin{frame}{Cross-entropy --- trực giác}
+\begin{itemize}
+    \item Đoán \hl{đúng \& chắc} ($p\!\to\!1$): $-\log p \to 0$ $\Rightarrow$ phạt $\approx 0$.
+    \item Đoán \hl{sai \& chắc} ($p\!\to\!0$): $-\log p \to \infty$ $\Rightarrow$ phạt rất nặng.
+    \item Mượt \& khả vi $\Rightarrow$ có gradient để học; cho \hl{xác suất} dùng cho ngưỡng / WTA.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Vì sao cần trọng số lớp?}
+\begin{itemize}
+    \item Chỉ $\sim$\hl{19\%} ô là ``tô'', $\sim$81\% là ``trống'' (mất cân bằng).
+    \item Không cân: đoán ``trống'' hết vẫn đúng 81\% $\Rightarrow$ loss tổng \hl{thấp giả tạo}.
+    \item $\Rightarrow$ model lười đoán ``trống'', \hl{bỏ sót} vết tô (recall lớp ``tô'' thấp).
+    \item Cần \hl{phạt nặng hơn} khi sai ở lớp hiếm (``tô'') để cân lại.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Trọng số lớp (class weight)}
+\[
+w_c=\frac{N}{2\,n_c}
+\]
+$N$ = số mẫu train, $n_c$ = số mẫu lớp $c$.
+\vspace{0.3cm}
+\begin{itemize}
+    \item Ví dụ: $w_{\text{trống}}\approx 0.62$, $w_{\text{tô}}\approx 2.57$.
+    \item Sai 1 ô \hl{tô} tốn $\sim$\hl{4.1$\times$} sai 1 ô \hl{trống}.
+    \item $\Rightarrow$ đẩy recall lớp ``tô'' lên.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Trọng số lớp --- thêm vào ở đâu?}
+\begin{itemize}
+    \item Là \hl{tham số của chính hàm loss}, không phải bước riêng: \\[2pt]
+          \texttt{CrossEntropyLoss(weight=$[w_{\text{trống}},\,w_{\text{tô}}]$)}.
+    \item \hl{Không bắt buộc}: nếu không truyền $\Rightarrow$ mọi lớp trọng số $=1$ (không cân).
+    \item Khi tính loss mỗi ô: nhân $-\log p_{y_i}$ với $w_{y_i}$ (theo \hl{lớp đúng} của ô đó).
+    \item $w_c=N/2n_c$ \hl{tự tính} từ nhãn tập train của mỗi fold.
+\end{itemize}
+\vspace{0.15cm}
+{\footnotesize $\Rightarrow$ chỉ đổi \emph{độ lớn phạt}, không đổi kiến trúc hay cách lan truyền ngược.}
+\end{frame}
+
+% ====================================================================
+\section{Vì sao cần thích nghi}
+
+\begin{frame}{Cùng nguồn / đa nguồn --- thắng lớn}
+Leave-one-exam-out (train 3 kỳ, test kỳ thứ 4):
+\begin{center}
+\begin{tabular}{|l|c|c|}
+\hline
+ & \textbf{Lỗi AMC} & \textbf{Lỗi CNN} \\
+\hline
+Gộp cả 4 vòng & 1938 & \hl{396} \\
+\hline
+\end{tabular}
+\end{center}
+\vspace{0.2cm}
+Giảm lỗi $\sim$\hl{80\%}; recall tô \hl{85.9\% $\to$ 98.6\%}.
+\end{frame}
+
+\begin{frame}{Nguồn lạ --- lệch miền (domain shift)}
+Train MỘT nguồn, test nguồn \hl{chưa từng thấy} (chưa augment):
+\begin{center}
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Chiều} & \textbf{Lỗi AMC} & \textbf{Lỗi CNN} \\
+\hline
+IT3020E $\to$ trr & 1614 & \textcolor{red}{35\,613} \\
+\hline
+trr $\to$ IT3020E & 324 & \textcolor{red}{2\,370} \\
+\hline
+\end{tabular}
+\end{center}
+\vspace{0.2cm}
+Lỗi \hl{bùng nổ $\times$7--22}: model đoán ``tô'' tràn lan trên nguồn lạ.
+\end{frame}
+
+\begin{frame}{Hai hướng chữa lệch miền}
+\begin{enumerate}
+    \item \hl{Augmentation} lúc train: méo độ sáng/tương phản/gamma/nhòe ngẫu nhiên $\Rightarrow$ bớt phụ thuộc một miền.
+    \item \hl{Thích nghi lúc chạy} (test-time) trên chính batch đề mới:
+    \begin{itemize}
+        \item AdaBN
+        \item Self-train (nhãn yếu)
+    \end{itemize}
+\end{enumerate}
+\vspace{0.2cm}
+\end{frame}
+
+% ====================================================================
+\section{AdaBN}
+
+\begin{frame}{AdaBN --- vấn đề}
+\vspace{0.2cm}
+\begin{itemize}
+    \item Lớp BatchNorm lưu thống kê (trung bình / phương sai) \hl{của tập train}.
+    \item Nguồn scan mới đậm/nhạt khác $\Rightarrow$ thống kê \hl{lệch} $\Rightarrow$ đầu ra lệch.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{AdaBN --- ý tưởng}
+\begin{itemize}
+    \item \hl{Giữ nguyên} trọng số đã học.
+    \item Chỉ \hl{tính lại} trung bình / phương sai của BatchNorm bằng \hl{ảnh đề mới}.
+\end{itemize}
+\vspace{0.3cm}
+{\footnotesize Adaptive BatchNorm: căn chỉnh phân phối đặc trưng về miền đích.}
+\end{frame}
+
+\begin{frame}{AdaBN --- cách làm}
+\begin{enumerate}
+    \item Mỗi BatchNorm: \texttt{reset\_running\_stats()}, \texttt{momentum=None}.
+    \item Chế độ \texttt{train()}, \hl{không tính gradient}, chạy tiến qua \hl{toàn bộ} ảnh đề mới.
+    \item Chuyển \texttt{eval()} rồi dự đoán.
+\end{enumerate}
+\vspace{0.3cm}
+{\footnotesize $\Rightarrow$ không nhãn, không lan truyền ngược, chỉ một lượt quét.}
+\end{frame}
+
+% ====================================================================
+\section{Self-train}
+
+\begin{frame}{Self-train --- ý tưởng}
+\vspace{0.2cm}
+\begin{itemize}
+    \item Đề mới chưa có nhãn người.
+    \item Mượn chính \hl{độ đậm của AMC} làm \hl{nhãn yếu} để tự học.
+    \item Nhưng chỉ tin ở \hl{vùng chắc chắn} (tránh học theo cái sai).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Self-train --- vùng chắc chắn}
+Gọi $r=\dfrac{black}{total}$ (tỉ lệ điểm đen của ô).
+\[
+r\le \texttt{lo}\;(\text{chắc \hl{trống}})
+\qquad\text{hoặc}\qquad
+r\ge \texttt{hi}=0.7\;(\text{chắc \hl{tô}}).
+\]
+\vspace{0.2cm}
+Vùng giữa ($\texttt{lo}<r<\texttt{hi}$, ô \hl{mờ}) $\Rightarrow$ \hl{bỏ qua}.
+\end{frame}
+
+\begin{frame}{Self-train --- cách làm}
+\begin{itemize}
+    \item Trộn \hl{1:1} ô nhãn-yếu (đề mới) với ô \hl{gold} (nhãn thật) $\Rightarrow$ không quên kiến thức cũ.
+    \item Tinh chỉnh nhẹ: \texttt{FT\_EPOCHS=3}, learning rate \texttt{2e-4}.
+    \item Sau đó chạy AdaBN.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Tham số \texttt{lo}}
+\begin{itemize}
+    \item \texttt{lo} \hl{nhỏ}: ít nhãn ``trống'' nhưng \hl{chắc} hơn.
+    \item \texttt{lo} \hl{lớn}: nhiều nhãn yếu hơn nhưng \hl{rủi ro} hơn.
+    \item Thử \texttt{lo} $\in\{0.2,\ 0.1,\ 0.05\}$.
+\end{itemize}
+\end{frame}
+
+% ====================================================================
+\section{Kết quả --- thích nghi (kiểm chéo nguồn)}
+
+\begin{frame}{Cách đo --- kiểm chéo nguồn}
+\begin{itemize}
+    \item Train MỘT nguồn (đã bật augment), test nguồn \hl{lạ}.
+    \item Trung bình 2 seed.
+    \item \hl{FIX} = AMC sai mà CNN sửa đúng (lợi ích).
+    \item \hl{REG} = AMC đúng mà CNN làm hỏng (cái giá --- càng thấp càng tốt).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Bước 0 --- AMC gốc trên nguồn lạ}
+\begin{center}
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Nguồn test} & \textbf{Lỗi AMC} & \textbf{recall tô} \\
+\hline
+trr (44\,250 ô) & 1614 & 81.6\% \\
+\hline
+IT3020E (20\,500 ô) & 324 & 95.3\% \\
+\hline
+\end{tabular}
+\end{center}
+\vspace{0.3cm}
+Đây là điểm xuất phát để so sánh.
+\end{frame}
+
+\begin{frame}{Bước 1 --- CNN ``none'' (chưa thích nghi)}
+{\footnotesize Đã bật augment, nhưng \emph{không} thích nghi lúc chạy.}
+\begin{center}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Chiều} & \textbf{Lỗi CNN} & \textbf{REG} & \textbf{recall} \\
+\hline
+IT3020E $\to$ trr & 695 & 378 & 81.6$\to$92.2 \\
+\hline
+trr $\to$ IT3020E & 90 & 23 & 95.3$\to$98.0 \\
+\hline
+\end{tabular}
+\end{center}
+\vspace{0.2cm}
+{\footnotesize Augment đã kéo REG từ 35\,585 xuống còn 378.}
+\end{frame}
+
+\begin{frame}{Bước 2a --- thêm AdaBN (riêng)}
+\begin{center}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Chiều} & \textbf{Lỗi CNN} & \textbf{REG} & \textbf{recall} \\
+\hline
+IT3020E $\to$ trr & 210 & 58 & 81.6$\to$\hl{98.1} \\
+\hline
+trr $\to$ IT3020E & 80 & 18 & 95.3$\to$98.5 \\
+\hline
+\end{tabular}
+\end{center}
+\vspace{0.2cm}
+REG: 378 $\to$ \hl{58} (IT3020E$\to$trr). AdaBN một mình đã giúp nhiều.
+\end{frame}
+
+\begin{frame}{Bước 2b --- thêm Self-train (riêng)}
+\begin{center}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Chiều} & \textbf{Lỗi CNN} & \textbf{REG} & \textbf{recall} \\
+\hline
+IT3020E $\to$ trr & 330 & 82 & 81.6$\to$96.5 \\
+\hline
+trr $\to$ IT3020E & 72 & 10 & 95.3$\to$98.5 \\
+\hline
+\end{tabular}
+\end{center}
+\vspace{0.2cm}
+Self-train một mình: REG 82, recall 96.5\% (hơi kém AdaBN ở chiều này).
+\end{frame}
+
+\begin{frame}{Bước 2c --- Self-train + AdaBN (kết hợp)}
+\begin{center}
+\begin{tabular}{|l|c|c|c|}
+\hline
+\textbf{Chiều} & \textbf{Lỗi CNN} & \textbf{REG} & \textbf{recall} \\
+\hline
+IT3020E $\to$ trr & \hl{178} & \hl{22} & 81.6$\to$\hl{98.3} \\
+\hline
+trr $\to$ IT3020E & 75 & 12 & 95.3$\to$98.5 \\
+\hline
+\end{tabular}
+\end{center}
+\vspace{0.2cm}
+Kết hợp cho \hl{tốt nhất}: REG nhỏ nhất, recall cao.
+\end{frame}
+
+\begin{frame}{Phase 2 --- bài toán quyết định}
+\begin{itemize}
+    \item Phase 1 cho mỗi ô một xác suất $p_{\text{tô}}$.
+    \item Phase 2 hỏi: từ các xác suất đó, ghi kết quả vào AMC theo luật nào?
+    \item So sánh hai luật: \hl{per-box@0.5} và \hl{winner-take-all (WTA)}.
+    \item Không đổi CNN; chỉ đổi lớp quyết định sau mạng.
+\end{itemize}
+\vspace{0.2cm}
+\end{frame}
+
+% ====================================================================
+\section{Phase 2 --- per-box và WTA}
+
+\begin{frame}{Quy trình Phase 2}
+\begin{center}
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  node distance=1.9cm,
+  box/.style={draw, rounded corners, fill=blue!8, minimum width=2.4cm,
+              minimum height=1.0cm, align=center, font=\small},
+  decision/.style={draw, rounded corners, fill=green!10, minimum width=2.6cm,
+                   minimum height=1.0cm, align=center, font=\small},
+  arr/.style={-{Latex[length=2.4mm]}, thick}
+]
+\node[box] (crop) {Ảnh từng ô\\$32\times32$};
+\node[box, right=of crop] (cnn) {CNN ensemble\\$p_{\text{tô}}$};
+\node[box, right=of cnn] (group) {Ghép theo câu\\\texttt{scoring.sqlite}};
+\node[decision, right=of group, yshift=0.55cm] (perbox) {per-box\\$p\ge0.5$};
+\node[decision, right=of group, yshift=-0.55cm] (wta) {WTA\\$\max p,\ p\ge F$};
+\node[box, right=2.1cm of perbox, yshift=-0.55cm] (eval) {So manual\\recall / f-tick\\miss / đúng-câu};
+\draw[arr] (crop) -- (cnn);
+\draw[arr] (cnn) -- (group);
+\draw[arr] (group) -- (perbox);
+\draw[arr] (group) -- (wta);
+\draw[arr] (perbox.east) -- ++(0.55,0) |- (eval.west);
+\draw[arr] (wta.east) -- ++(0.55,0) |- (eval.west);
+\end{tikzpicture}%
+}
+\end{center}
+\vspace{0.2cm}
+\begin{itemize}
+    \item \texttt{type}/\texttt{indicative} dùng để nhận diện đúng nhóm câu \hl{chọn-một}.
+    \item Per-box nhìn từng ô; WTA nhìn \hl{cả câu}.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Cách đo --- leave-one-source-out (LOSO)}
+\begin{itemize}
+    \item Giữ lần lượt \hl{1 nguồn} làm test unseen, train trên \hl{3 nguồn còn lại}.
+    \item Test trên 4 nguồn đã rà tay: IT3020E \#1, IT3020E \#2, trr-1, trr-2.
+    \item Mỗi cấu hình chạy cùng pipeline: CNN $\to$ thích nghi nếu có $\to$ \textcolor{red}{luật quyết định}.
+    \item Đối chiếu cuối cùng với \hl{nhãn người} (manual).
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Tập đánh giá LOSO}
+\footnotesize
+\begin{center}
+\begin{tabular}{|l|c|c|l|}
+\hline
+\textbf{Nguồn test} & \textbf{Số câu} & \textbf{Vai trò} & \textbf{Điểm cần quan sát} \\
+\hline
+IT3020E \#1 & 760 & unseen & AMC bỏ sót nhiều ô tô \\
+\hline
+IT3020E \#2 & 1320 & unseen & AMC nhiều false-tick \\
+\hline
+trr-1 & 2160 & unseen & AMC yếu nhất, miss rất lớn \\
+\hline
+trr-2 & 2000 & unseen & miss lớn, per-box dễ thêm false-tick \\
+\hline
+\hl{Tổng} & \hl{6240} & 4 fold & So sánh chính sách cố định \\
+\hline
+\end{tabular}
+\end{center}
+\vspace{0.2cm}
+\end{frame}
+
+\begin{frame}{Bốn chỉ số}
+\begin{itemize}
+    \item \hl{recall:} \% ô thực sự tô được bắt đúng.
+    \item \hl{false-tick:} ô trống bị đánh thành tô; càng thấp càng tốt.
+    \item \hl{miss:} ô tô thật bị bỏ sót.
+    \item \hl{đúng-câu:} đáp án cả câu trùng với manual; đây là chỉ số sát nghiệp vụ nhất.
+\end{itemize}
+\vspace{0.15cm}
+{\footnotesize Recall, false-tick, miss là mức ô; đúng-câu là mức câu.}
+\end{frame}
+
+\begin{frame}{Hai luật quyết định}
+\footnotesize
+\begin{center}
+\begin{tabular}{|l|p{4.2cm}|p{4.6cm}|}
+\hline
+\textbf{Luật} & \textbf{Cách làm} & \textbf{Hệ quả} \\
+\hline
+per-box@0.5 &
+Mỗi ô độc lập: $\hat y_j=1$ nếu $p_j\ge0.5$. &
+Bắt được nhiều ô tô, nhưng một câu có thể có nhiều ô bị tick. \\
+\hline
+WTA floor $F$ &
+Trong một câu chọn-một, lấy ô có $p$ lớn nhất; chỉ tick nếu $p_{\max}\ge F$. &
+Ép đúng cấu trúc một-câu-một-đáp-án, thường giảm false-tick. \\
+\hline
+\end{tabular}
+\end{center}
+\vspace{0.2cm}
+{\scriptsize WTA chỉ nên áp dụng cho câu \hl{chọn-một}; câu nhiều đáp án cần luật riêng.}
+\end{frame}
+
+\begin{frame}{per-box@0.5 --- chi tiết}
+Với mỗi ô $j$:
+\[
+\hat y_j =
+\begin{cases}
+1, & p_j \ge 0.5,\\
+0, & p_j < 0.5.
+\end{cases}
+\]
+\vspace{0.2cm}
+\begin{itemize}
+    \item Ưu điểm: đơn giản, đúng với bài toán phân loại ô độc lập.
+    \item Nhược điểm: không biết các ô cùng thuộc một câu chọn-một.
+    \item Khi nền scan nhiễu, vài ô sai nhẹ vượt 0.5 $\Rightarrow$ sinh false-tick.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Winner-take-all --- chi tiết}
+Với câu chọn-một có các ô $j\in Q$:
+\[
+j^*=\arg\max_{j\in Q} p_j,\qquad
+\hat y_{j^*}=1 \text{ nếu } p_{j^*}\ge F,
+\]
+\[
+\hat y_j=0 \quad \forall j\ne j^* .
+\]
+\vspace{0.2cm}
+\begin{itemize}
+    \item $F$ là \hl{floor}: nếu tất cả xác suất quá thấp thì không ép chọn.
+    \item $F=0.2$ bảo thủ hơn $F=0.1$: ít false-tick hơn, có thể miss thêm vài ô.
+    \item WTA biến xác suất mức ô thành quyết định \hl{mức câu}.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Các cấu hình đã quét}
+\footnotesize
+\begin{center}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Trục quét} & \textbf{Giá trị} \\
+\hline
+Thích nghi & no-adapt, \texttt{lo}=0.2, \texttt{lo}=0.1, \texttt{lo}=0.05 \\
+\hline
+Luật quyết định & per-box@0.5, WTA floor=0.2, WTA floor=0.1 \\
+\hline
+Train/test & LOSO: train 3 nguồn, test nguồn còn lại \\
+\hline
+Chỉ số chính & đúng-câu; kèm recall, false-tick, miss \\
+\hline
+\end{tabular}
+\end{center}
+\vspace{0.25cm}
+\begin{itemize}
+    \item \texttt{lo} chỉ thuộc Self-train/AdaBN; no-adapt không dùng nhãn yếu.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Bước 0 --- AMC gốc}
+\footnotesize
+\begin{center}
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Nguồn} & \textbf{recall} & \textbf{false-tick} & \textbf{miss} & \textbf{đúng-câu} \\
+\hline
+IT3020E \#1 & 85.33 & 0 & 127 & 83.82 \\
+\hline
+IT3020E \#2 & 99.05 & \textcolor{red}{132} & 15 & 99.47 \\
+\hline
+trr-1 & 62.81 & 10 & \textcolor{red}{981} & 57.31 \\
+\hline
+trr-2 & 75.19 & 18 & \textcolor{red}{605} & 72.20 \\
+\hline
+\hl{Tổng} & \hl{77.05} & \hl{160} & \hl{1728} & \hl{74.23} \\
+\hline
+\end{tabular}
+\end{center}
+\vspace{0.2cm}
+{\scriptsize AMC gốc có hai kiểu lỗi khác nhau: IT3020E \#2 nhiều false-tick, trr-1/trr-2 nhiều miss.}
+\end{frame}
+
+\begin{frame}{Kết quả theo nguồn --- chưa thích nghi (no-adapt)}
+\footnotesize
+Cùng \hl{một} cấu hình cho cả 4 nguồn (CNN no-adapt), không chọn theo nguồn.
+\begin{center}
+\begin{tabular}{|l|c|c|c|c|c|c|}
+\hline
+\textbf{Nguồn (n\_q)} &
+\multicolumn{2}{c|}{\textbf{AMC gốc}} &
+\multicolumn{2}{c|}{\textbf{per-box@0.5}} &
+\multicolumn{2}{c|}{\textbf{WTA0.2}} \\
+\hline
+ & đúng-câu & f-tick & đúng-câu & f-tick & đúng-câu & f-tick \\
+\hline
+IT3020E \#1 (760) & 83.82 & 0 & 99.74 & 2 & 99.47 & 9 \\
+\hline
+IT3020E \#2 (1320) & 99.47 & \textcolor{red}{132} & 99.32 & 11 & \hl{99.85} & 6 \\
+\hline
+trr-1 (2160) & 57.31 & 10 & 97.59 & 13 & \hl{98.15} & 6 \\
+\hline
+trr-2 (2000) & 72.20 & 18 & 99.30 & 34 & \hl{100.0} & 17 \\
+\hline
+\hl{Tổng (6240)} & 74.23 & 160 & 98.77 & 60 & \hl{99.26} & \hl{38} \\
+\hline
+\end{tabular}
+\end{center}
+\vspace{0.1cm}
+{\scriptsize đúng-câu (\%): cao hơn tốt hơn. false-tick (số ô): thấp hơn tốt hơn. WTA0.2 thắng per-box ở \hl{cả} đúng-câu (99.26 vs 98.77) lẫn false-tick (38 vs 60).}
+\end{frame}
+
+\begin{frame}{Kết quả theo nguồn --- có thích nghi (\texttt{lo}=0.2)}
+\footnotesize
+Cùng cấu hình \texttt{lo}=0.2 (Self-train + AdaBN) cho cả 4 nguồn.
+\begin{center}
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Nguồn (n\_q)} &
+\multicolumn{2}{c|}{\textbf{per-box@0.5}} &
+\multicolumn{2}{c|}{\textbf{WTA0.2}} \\
+\hline
+ & đúng-câu & f-tick & đúng-câu & f-tick \\
+\hline
+IT3020E \#1 (760) & \hl{100.0} & \hl{0} & 99.47 & 1 \\
+\hline
+IT3020E \#2 (1320) & 99.47 & 9 & \hl{99.85} & \hl{0} \\
+\hline
+trr-1 (2160) & 97.22 & 9 & \hl{98.06} & 5 \\
+\hline
+trr-2 (2000) & 98.75 & 19 & \hl{99.80} & 18 \\
+\hline
+\hl{Tổng (6240)} & 98.52 & 37 & \hl{99.17} & \hl{24} \\
+\hline
+\end{tabular}
+\end{center}
+\vspace{0.1cm}
+{\scriptsize So với no-adapt, \texttt{lo}=0.2 giảm false-tick tổng (per-box 60$\to$37, WTA0.2 38$\to$24) nhưng đúng-câu hơi giảm (WTA0.2 99.26$\to$99.17). Nguồn sạch IT3020E \#1: per-box lên \hl{100\%}.}
+\end{frame}
+
+\begin{frame}{Đặc trưng lỗi theo từng nguồn}
+\footnotesize
+AMC gốc thể hiện \hl{hai dạng lỗi} khác nhau; mỗi luật quyết định phù hợp với một dạng:
+\begin{itemize}
+    \item \hl{IT3020E \#1} --- ảnh quét chất lượng tốt, AMC vốn chính xác. per-box đạt 99.74\%; thích nghi \texttt{lo}=0.2 đạt \hl{100\%}. WTA không cần thiết, chỉ làm tăng số ô đánh dấu nhầm.
+    \item \hl{IT3020E \#2} --- AMC \hl{đánh dấu nhầm} nhiều ô trống (132 ô). WTA áp ràng buộc ``một câu một đáp án'', giảm còn \hl{6} ô, đúng-câu đạt \hl{99.85\%}.
+    \item \hl{trr-1, trr-2} --- AMC \hl{bỏ sót} nhiều ô tô (981 và 605 ô). CNN khôi phục phần lớn; WTA nâng đúng-câu từ 57--72\% lên \hl{98--100\%}.
+\end{itemize}
+\vspace{0.1cm}
+{\footnotesize Kết luận: nguồn chất lượng tốt chỉ cần per-box; nguồn nhiều nhiễu hoặc bỏ sót cần WTA do luật này tận dụng ràng buộc ``chọn-một''.}
+\end{frame}
+
+\begin{frame}{Tác động của thích nghi lúc suy luận (\texttt{lo})}
+\scriptsize
+\hl{false-tick}: ô trống bị đánh dấu nhầm; \hl{miss}: ô tô bị bỏ sót (tổng 6240 câu).
+\begin{center}
+\begin{tabular}{|l|c|c|c|c|c|c|}
+\hline
+\textbf{Thích nghi} &
+\multicolumn{3}{c|}{\textbf{per-box@0.5}} &
+\multicolumn{3}{c|}{\textbf{WTA0.2}} \\
+\hline
+ & f-tick & miss & đúng-câu & f-tick & miss & đúng-câu \\
+\hline
+\hl{no-adapt} & 60 & 114 & \hl{98.77} & 38 & 112 & \hl{99.26} \\
+\hline
+\texttt{lo}=0.2 & \hl{37} & 156 & 98.52 & \hl{24} & 120 & 99.17 \\
+\hline
+\texttt{lo}=0.1 & 46 & 145 & 98.61 & 39 & 118 & 99.20 \\
+\hline
+\texttt{lo}=0.05 & 50 & 121 & 98.95 & 39 & 115 & 99.23 \\
+\hline
+\end{tabular}
+\end{center}
+\vspace{0.15cm}
+{\footnotesize Thích nghi làm giảm false-tick (WTA0.2: 38$\to$24) nhưng làm tăng miss (112$\to$120), do đó đúng-câu không vượt no-adapt. Nên chọn no-adapt để tối đa đúng-câu, hoặc \texttt{lo}=0.2 để tối thiểu số ô đánh dấu nhầm.}
+\end{frame}
+
+\begin{frame}{Tổng hợp kết quả: AMC gốc đến CNN kết hợp WTA}
+\footnotesize
+\begin{center}
+\begin{tabular}{|l|c|c|c|c|}
+\hline
+\textbf{Giai đoạn} & \textbf{recall} & \textbf{f-tick} & \textbf{miss} & \textbf{đúng-câu} \\
+\hline
+AMC gốc & 77.05 & 160 & 1728 & 74.23 \\
+\hline
+CNN no-adapt + per-box & 98.49 & 60 & 114 & 98.77 \\
+\hline
+\hl{CNN no-adapt + WTA0.2} & \hl{98.51} & 38 & \hl{112} & \hl{99.26} \\
+\hline
+CNN \texttt{lo}=0.2 + WTA0.2 & 98.41 & \hl{24} & 120 & 99.17 \\
+\hline
+\end{tabular}
+\end{center}
+\vspace{0.2cm}
+{\scriptsize Theo thứ tự từ trên xuống: CNN nâng đúng-câu từ \hl{74.23\%} lên xấp xỉ \hl{99\%}; WTA0.2 vượt per-box ở \hl{cả} đúng-câu (98.77 $\to$ 99.26) và false-tick (60 $\to$ 38).}
+\end{frame}
+
+\begin{frame}{Diễn giải kết quả Phase 2}
+\begin{itemize}
+    \item Per-box rất mạnh khi nguồn sạch: IT3020E \#1 đạt \hl{100\%} với \texttt{lo}=0.2.
+    \item Nhưng per-box không biết ràng buộc chọn-một, nên dễ sinh false-tick ở IT3020E \#2 và trr-2.
+    \item WTA0.2 dùng thông tin cấu trúc câu, vì vậy đúng-câu tổng cao nhất: \hl{99.26\%}.
+    \item \texttt{lo}=0.2 + WTA0.2 phù hợp khi ưu tiên giảm false-tick tuyệt đối: \hl{24} false-tick.
+\end{itemize}
+\end{frame}
+
+% ====================================================================
+\section{Kết luận}
+
+\begin{frame}{Kết luận}
+\begin{enumerate}
+    \item Phase 1 tạo xác suất ô đủ tốt: CNN đưa recall tổng \hl{77.05\% $\to$ 98.49\%}.
+    \item Phase 2 nên dùng \hl{WTA floor 0.2} làm luật mặc định cho câu chọn-một.
+    \item Chính sách mặc định đề xuất: \hl{no-adapt + WTA0.2} nếu tối đa đúng-câu; \hl{\texttt{lo}=0.2 + WTA0.2} nếu ưu tiên ít false-tick.
+    \item Không áp dụng WTA mù cho câu nhiều đáp án; cần giữ per-box hoặc thiết kế luật riêng.
+\end{enumerate}
+\end{frame}
+
+\end{document}
